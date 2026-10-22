@@ -1,0 +1,595 @@
+<?php
+// definirEntregaDaVenda() usa recalcularTotalVenda(), definida em caixa.php.
+require_once __DIR__ . '/caixa.php';
+require_once __DIR__ . '/email_smtp.php';
+require_once __DIR__ . '/whatsapp_conexao.php';
+
+/**
+ * Libera reservas de carrinho da loja online que passaram do prazo — devolve
+ * a reserva de cada item e marca a venda como cancelada. Chamada no início
+ * de toda página/endpoint da loja que lê estoque ou carrinho, em vez de
+ * depender de um cron job (a liberação só acontece quando alguém acessa o
+ * sistema, mas isso é suficiente pra este projeto).
+ */
+function liberarReservasExpiradas(PDO $pdo): void
+{
+    // Enquanto existe um pagamento em andamento (pagamento_expira_em preenchido —
+    // ver loja/ajax/gerar_checkout.php), o prazo normal do carrinho não vale mais:
+    // só o prazo do próprio pagamento (10 min) decide se a venda expirou. Isso evita
+    // devolver ao estoque um item que o cliente está no meio de pagar no Mercado
+    // Pago. Sem pagamento em andamento, vale a regra de sempre (prazo do carrinho) —
+    // a menos que prazo_reserva_minutos seja 0 (carrinho livre, sem cronômetro),
+    // caso em que o item nunca expira sozinho por tempo; o prazo de pagamento do
+    // Mercado Pago continua valendo normalmente mesmo com o carrinho livre.
+    $stmt = $pdo->prepare(
+        "SELECT v.id_venda
+         FROM vendas v
+         JOIN config_loja cl ON cl.id_config = 1
+         WHERE v.status = 'Reservado' AND v.origem = 'loja'
+           AND (
+                (v.pagamento_expira_em IS NULL AND cl.prazo_reserva_minutos > 0 AND v.data_venda < DATE_SUB(NOW(), INTERVAL cl.prazo_reserva_minutos MINUTE))
+                OR (v.pagamento_expira_em IS NOT NULL AND v.pagamento_expira_em < NOW())
+           )"
+    );
+    $stmt->execute();
+    $vendasExpiradas = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // Cancelar e devolver a reserva têm que acontecer juntos: se o processo morresse entre os
+    // dois, a reserva ficaria presa pra sempre (nenhuma varredura posterior pega a venda de
+    // novo, porque ela já não está mais 'Reservado'). Cada venda vai na sua própria transação;
+    // o guard do inTransaction() mantém a função segura se algum chamador já tiver aberto uma.
+    foreach ($vendasExpiradas as $id_venda) {
+        cancelarVendaReservadaLoja($pdo, (int) $id_venda);
+    }
+}
+
+/**
+ * Cancela uma venda 'Reservado' da loja online e devolve a reserva de
+ * estoque — usada tanto pela varredura automática de expiração acima quanto
+ * pelo cancelamento manual de um pagamento pendente (pedidos/ajax/
+ * cancelar_pagamento_mp.php). Retorna true só se realmente cancelou (a venda
+ * pode já ter mudado de status por outro caminho concorrente, ex.: o
+ * webhook confirmando o pagamento bem na hora).
+ */
+function cancelarVendaReservadaLoja(PDO $pdo, int $id_venda): bool
+{
+    $jaEmTransacao = $pdo->inTransaction();
+    if (!$jaEmTransacao) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $cancelou = $pdo->prepare("UPDATE vendas SET status = 'Cancelado' WHERE id_venda = :id AND status = 'Reservado'");
+        $cancelou->execute([':id' => $id_venda]);
+        $cancelouDeVerdade = $cancelou->rowCount() > 0;
+        if ($cancelouDeVerdade) {
+            devolverReservaDaVenda($pdo, $id_venda);
+        }
+        if (!$jaEmTransacao) {
+            $pdo->commit();
+        }
+        return $cancelouDeVerdade;
+    } catch (Throwable $e) {
+        if (!$jaEmTransacao && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+/**
+ * Devolve a reserva (estoque_reservado) de todos os itens de uma venda —
+ * reaproveitada pela expiração automática, pela remoção explícita de um
+ * item do carrinho, e por uma falha de finalização vinda do webhook.
+ */
+function devolverReservaDaVenda(PDO $pdo, int $id_venda): void
+{
+    $stmt = $pdo->prepare('SELECT id_produto_variacao, quantidade FROM itens_venda WHERE id_venda = :id');
+    $stmt->execute([':id' => $id_venda]);
+    foreach ($stmt->fetchAll() as $item) {
+        if ($item['id_produto_variacao'] === null) {
+            continue;
+        }
+        // liberado_em marca o instante em que a peça voltou a ficar disponível — é o que
+        // permite ao catálogo avisar em tempo real quem está navegando (ver
+        // loja/ajax/verificar_novidades.php), mesmo sem essa pessoa ter mexido no carrinho.
+        $pdo->prepare('UPDATE produto_variacoes SET estoque_reservado = GREATEST(0, estoque_reservado - :qtd), liberado_em = NOW() WHERE id_produto_variacao = :id')
+            ->execute([':qtd' => $item['quantidade'], ':id' => $item['id_produto_variacao']]);
+    }
+}
+
+/**
+ * Busca o carrinho "Reservado" ainda em montagem deste cliente na loja
+ * online, se houver — NÃO inclui uma venda que já foi pro Mercado Pago
+ * (pagamento_expira_em preenchido): a partir do momento que o cliente clica
+ * em pagar, aquela venda vira um pedido de verdade (visível em
+ * meus_pedidos.php como "Aguardando pagamento") e deixa de ser "o carrinho";
+ * adicionar um novo item nesse momento cria um carrinho novo do zero (ver
+ * loja/ajax/adicionar_item.php), em vez de voltar a mexer num pedido que já
+ * está em pagamento.
+ */
+function buscarCarrinhoDoCliente(PDO $pdo, int $id_cliente): ?int
+{
+    $stmt = $pdo->prepare(
+        "SELECT id_venda FROM vendas WHERE id_cliente = :ic AND origem = 'loja' AND status = 'Reservado' AND pagamento_expira_em IS NULL ORDER BY data_venda DESC LIMIT 1"
+    );
+    $stmt->execute([':ic' => $id_cliente]);
+    $id = $stmt->fetchColumn();
+    return $id ? (int) $id : null;
+}
+
+/**
+ * Grava/substitui a linha de entrega da venda — um item sem produto vinculado
+ * (id_produto_variacao NULL), que finalizarVenda()/devolverReservaDaVenda() já
+ * ignoram — e recalcula o total. Reaproveitado tanto pelo checkout via Mercado
+ * Pago quanto pelo pagamento direto com Linha de Crédito, pra nunca duplicar essa
+ * lógica entre os dois fluxos.
+ */
+function definirEntregaDaVenda(PDO $pdo, int $id_venda, array $entrega): float
+{
+    $pdo->prepare("DELETE FROM itens_venda WHERE id_venda = :iv AND id_produto_variacao IS NULL AND nome_produto = 'Entrega'")
+        ->execute([':iv' => $id_venda]);
+
+    if ((float) $entrega['custo'] > 0) {
+        $pdo->prepare(
+            'INSERT INTO itens_venda (id_venda, nome_produto, descricao_combinacao, id_produto_variacao, quantidade, preco_unit, subtotal)
+             VALUES (:iv, :nome, :desc, NULL, 1, :preco, :subtotal)'
+        )->execute([
+            ':iv' => $id_venda,
+            ':nome' => 'Entrega',
+            ':desc' => $entrega['nome'],
+            ':preco' => (float) $entrega['custo'],
+            ':subtotal' => (float) $entrega['custo'],
+        ]);
+    }
+
+    $pdo->prepare('UPDATE vendas SET id_entrega = :ie WHERE id_venda = :iv')
+        ->execute([':ie' => (int) $entrega['id_entrega'], ':iv' => $id_venda]);
+
+    return recalcularTotalVenda($pdo, $id_venda);
+}
+
+/**
+ * Monta o link "wa.me" pra compartilhar um produto num grupo/contato do
+ * WhatsApp — sem número de destino, então abre o seletor de conversa do
+ * próprio WhatsApp. O texto traz nome e preço direto na mensagem (não
+ * depende só da prévia do link, que demora pra carregar ou pode falhar
+ * em alguns grupos); a prévia bonita com foto vem das tags og:* que
+ * loja/produto.php imprime no <head>, lidas pelo crawler do WhatsApp
+ * quando alguém abre/reenvia o link.
+ */
+function montarLinkCompartilharWhatsapp(string $nome, float $preco, string $urlProduto): string
+{
+    $precoFormatado = number_format($preco, 2, ',', '.');
+    $texto = "🛍️ *{$nome}*\nR$ {$precoFormatado}\n\n{$urlProduto}";
+    return 'https://api.whatsapp.com/send?text=' . urlencode($texto);
+}
+
+/**
+ * Normaliza um WhatsApp digitado (cadastro, "Minha conta") pro formato
+ * salvo no banco: "55" + DDD + 9 dígitos, sempre com o 9 na frente (só
+ * celular -- o formato antigo de 8 dígitos sem o 9 não é mais aceito).
+ * Devolve string vazia se não bater com esse formato exato, pra quem chama
+ * decidir a mensagem de erro. Compartilhada entre cadastro.php e
+ * minha_conta.php pra nunca validar diferente em cada lugar.
+ */
+function normalizarWhatsapp(string $whatsapp): string
+{
+    $digitos = preg_replace('/\D/', '', $whatsapp);
+    if (strlen($digitos) === 11) {
+        $digitos = '55' . $digitos;
+    }
+    if (!preg_match('/^55\d{2}9\d{8}$/', $digitos)) {
+        return '';
+    }
+    return $digitos;
+}
+
+/**
+ * Formata o WhatsApp da loja (guardado como só dígitos, ex: "5534996536637")
+ * pra exibição — usado no rodapé. Se não bater com o formato esperado (BR,
+ * DDI+DDD+9 dígitos), devolve como veio pra nunca esconder um número salvo.
+ */
+function formatarWhatsappExibicao(string $whatsapp): string
+{
+    if (preg_match('/^55(\d{2})(\d{5})(\d{4})$/', $whatsapp, $m)) {
+        return '+55 (' . $m[1] . ') ' . $m[2] . '-' . $m[3];
+    }
+    return $whatsapp;
+}
+
+/**
+ * Mesmo formato que formatarTelefoneBr() (assets/js/loja.js) produz enquanto o
+ * cliente digita — usado pra pré-preencher um campo EDITÁVEL de WhatsApp
+ * (ex: Minha conta) sem o "+55" do formatarWhatsappExibicao() acima, que
+ * quebraria a máscara JS se ficasse no valor inicial do campo (o "55" do
+ * "+55" seria lido como dois dígitos do número pela máscara).
+ */
+function formatarWhatsappParaEdicao(string $whatsapp): string
+{
+    $digitos = preg_replace('/\D/', '', $whatsapp);
+    if (strlen($digitos) > 11 && str_starts_with($digitos, '55')) {
+        $digitos = substr($digitos, 2);
+    }
+    if (strlen($digitos) < 10) {
+        return $whatsapp;
+    }
+    $ddd = substr($digitos, 0, 2);
+    $resto = substr($digitos, 2);
+    $tamanhoParte1 = strlen($digitos) > 10 ? 5 : 4;
+    $parte1 = substr($resto, 0, $tamanhoParte1);
+    $parte2 = substr($resto, $tamanhoParte1);
+    return '(' . $ddd . ') ' . $parte1 . ($parte2 !== '' ? '-' . $parte2 : '');
+}
+
+/**
+ * True só quando o cliente já confirmou o código do e-mail. Usado pra
+ * bloquear carrinho/adicionar-ao-carrinho de contas com e-mail ainda não
+ * confirmado — evita cadastro com e-mail falso ("conta fantasma"). Pra
+ * decidir se o carrinho libera de verdade (considerando também WhatsApp
+ * verificado, quando esse recurso está ativado), use clienteVerificado().
+ */
+function clienteEmailVerificado(PDO $pdo, int $id_cliente): bool
+{
+    $stmt = $pdo->prepare('SELECT email_verificado_em FROM clientes WHERE id_cliente = :id');
+    $stmt->execute([':id' => $id_cliente]);
+    return $stmt->fetchColumn() !== null;
+}
+
+/**
+ * True quando a verificação por WhatsApp confirmou o número. Independente
+ * de o recurso estar ativado ou não no painel_dev -- pra saber se isso
+ * conta pra liberar o carrinho, use clienteVerificado().
+ */
+function clienteWhatsappVerificado(PDO $pdo, int $id_cliente): bool
+{
+    $stmt = $pdo->prepare('SELECT whatsapp_verificado_em FROM clientes WHERE id_cliente = :id');
+    $stmt->execute([':id' => $id_cliente]);
+    return $stmt->fetchColumn() !== null;
+}
+
+/**
+ * True quando pelo menos UM dos dois identificadores (e-mail ou WhatsApp)
+ * já foi confirmado -- qualquer um dos dois já libera o carrinho. Se a
+ * verificação por WhatsApp estiver desativada no painel_dev, o WhatsApp
+ * verificado não conta (só existe e-mail nesse caso) -- mesmo comportamento
+ * de sempre pra quem nunca ligou o recurso.
+ */
+function clienteVerificado(PDO $pdo, int $id_cliente): bool
+{
+    if (clienteEmailVerificado($pdo, $id_cliente)) {
+        return true;
+    }
+
+    $whatsappHabilitado = whatsappAtivo($pdo);
+    return $whatsappHabilitado && clienteWhatsappVerificado($pdo, $id_cliente);
+}
+
+/**
+ * Gera um código de 6 dígitos (válido por 30min), salva no cliente e manda
+ * por e-mail. Chamada tanto no cadastro novo quanto na ativação de conta
+ * existente (e de novo sempre que o cliente troca de e-mail em "Minha
+ * conta") — em todos os casos o e-mail está, até esse ponto, um dado não
+ * confirmado. Pra reenviar o MESMO código (botão "não recebi" dentro do
+ * popup), usa reenviarCodigoVerificacaoEmail() em vez desta.
+ */
+function dispararVerificacaoEmail(PDO $pdo, int $id_cliente, string $email, string $nome): array
+{
+    $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+    // Expiração calculada dentro do próprio SQL (NOW() do MySQL), nunca com
+    // time()/date() do PHP -- os dois relógios podem estar em fusos
+    // diferentes (já aconteceu antes neste projeto), e gravar um horário
+    // calculado em PHP só é válido se os dois relógios baterem exatamente.
+    $pdo->prepare("UPDATE clientes SET token_verificacao_email = :t, token_verificacao_expira_em = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id_cliente = :id")
+        ->execute([':t' => $codigo, ':id' => $id_cliente]);
+
+    return enviarEmailCodigoVerificacao($pdo, $email, $nome, $codigo);
+}
+
+/**
+ * Reenvia o código de verificação já existente do cliente, sem gerar um
+ * novo -- é o que o botão "não recebi o e-mail" dentro do popup usa. Só
+ * gera um código novo (via dispararVerificacaoEmail) se não existir nenhum
+ * pendente ou se o que existe já expirou.
+ */
+function reenviarCodigoVerificacaoEmail(PDO $pdo, int $id_cliente, string $email, string $nome): array
+{
+    // Expiração comparada dentro do SQL (NOW() do MySQL) -- ver mesma nota em
+    // loja/ajax/validar_codigo_email.php sobre não misturar strtotime()/time()
+    // do PHP com horário vindo do MySQL.
+    $stmt = $pdo->prepare(
+        "SELECT token_verificacao_email, (token_verificacao_expira_em > NOW()) AS codigo_valido
+         FROM clientes WHERE id_cliente = :id"
+    );
+    $stmt->execute([':id' => $id_cliente]);
+    $atual = $stmt->fetch();
+
+    $codigoAindaValido = $atual && !empty($atual['token_verificacao_email']) && $atual['codigo_valido'];
+
+    if ($codigoAindaValido) {
+        return enviarEmailCodigoVerificacao($pdo, $email, $nome, $atual['token_verificacao_email']);
+    }
+
+    return dispararVerificacaoEmail($pdo, $id_cliente, $email, $nome);
+}
+
+function enviarEmailCodigoVerificacao(PDO $pdo, string $email, string $nome, string $codigo): array
+{
+    $configLoja = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetch();
+    $nomeLoja = $configLoja['nome_loja'] ?? 'a loja';
+    $primeiroNome = explode(' ', trim($nome))[0];
+
+    $corpo = montarEmailHtmlLoja(
+        $pdo,
+        'Confirme seu e-mail',
+        [
+            'Olá, ' . htmlspecialchars($primeiroNome) . '!',
+            'Use o código abaixo pra confirmar que esse e-mail é seu e liberar o carrinho de compras na <strong>' . htmlspecialchars($nomeLoja) . '</strong>.',
+            'Ele é válido por <strong>30 minutos</strong>.',
+        ],
+        $codigo
+    );
+
+    $resultado = enviarEmailSMTP($pdo, $email, 'Seu código de verificação — ' . $nomeLoja, $corpo);
+    if (!$resultado['success']) {
+        error_log('Falha ao enviar e-mail de verificação: ' . $resultado['message']);
+    }
+    return $resultado;
+}
+
+/**
+ * Gera um código de 6 dígitos (válido por 30min) pro WhatsApp, salva no
+ * cliente e manda via enviarCodigoWhatsapp(). Só faz sentido chamar isso
+ * com a verificação por WhatsApp ativa (whatsappAtivo(): dev habilitou e a loja conectou o número)
+ * -- quem chama já checa isso antes.
+ */
+function dispararVerificacaoWhatsapp(PDO $pdo, int $id_cliente, string $whatsapp, string $nome): array
+{
+    $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+    // Expiração calculada dentro do próprio SQL (NOW() do MySQL) -- ver
+    // mesma nota em dispararVerificacaoEmail() sobre não misturar
+    // time()/date() do PHP com horário do MySQL.
+    $pdo->prepare("UPDATE clientes SET token_verificacao_whatsapp = :t, token_verificacao_whatsapp_expira_em = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id_cliente = :id")
+        ->execute([':t' => $codigo, ':id' => $id_cliente]);
+
+    return enviarCodigoWhatsapp($pdo, $id_cliente, $whatsapp, $nome, $codigo);
+}
+
+const REENVIO_WHATSAPP_INTERVALO_MINUTOS = 10;
+
+/**
+ * Trava de 10 minutos (fixa, por segurança) entre pedidos de reenvio do
+ * código por WhatsApp -- cada pedido dispara um envio de verdade via
+ * Evolution API (custo real), então evita o cliente ficar clicando "não
+ * recebi" repetidamente.
+ *
+ * Baseada em clientes.whatsapp_ultimo_envio_em -- carimbada em TODO envio
+ * de verdade, dentro de enviarCodigoWhatsapp(), não em quando o código foi
+ * criado. Isso importa porque reenviar o MESMO código (quando ele ainda
+ * está válido) de propósito não mexe na expiração dele -- usar a expiração
+ * como "quando foi o último pedido" (como a primeira versão desta trava
+ * fazia) só travava os primeiros 10min após a criação ORIGINAL do código;
+ * depois disso, como a expiração nunca mudava nos reenvios seguintes, a
+ * trava ficava destravada pelo resto dos 30min de validade -- bug real,
+ * encontrado testando em produção. Comparado dentro do próprio SQL (NOW()),
+ * nunca com strtotime()/time() do PHP.
+ */
+function segundosDeEsperaReenvioWhatsapp(PDO $pdo, int $id_cliente): int
+{
+    $stmt = $pdo->prepare(
+        "SELECT GREATEST(0, (:intervalo * 60) - TIMESTAMPDIFF(SECOND, whatsapp_ultimo_envio_em, NOW())) AS segundos_de_espera
+         FROM clientes WHERE id_cliente = :id AND whatsapp_ultimo_envio_em IS NOT NULL"
+    );
+    $stmt->execute([':intervalo' => REENVIO_WHATSAPP_INTERVALO_MINUTOS, ':id' => $id_cliente]);
+    $segundos = $stmt->fetchColumn();
+
+    return $segundos !== false ? (int) $segundos : 0;
+}
+
+/**
+ * Reenvia o código de verificação de WhatsApp já existente, sem gerar um
+ * novo -- mesmo espelho de reenviarCodigoVerificacaoEmail(), usado pelo
+ * botão "não recebi" dentro do popup. Só gera um código novo se não existir
+ * nenhum pendente ou se o que existe já expirou.
+ */
+function reenviarCodigoVerificacaoWhatsapp(PDO $pdo, int $id_cliente, string $whatsapp, string $nome): array
+{
+    $espera = segundosDeEsperaReenvioWhatsapp($pdo, $id_cliente);
+    if ($espera > 0) {
+        $minutos = (int) ceil($espera / 60);
+        return ['success' => false, 'message' => "Espera mais {$minutos} minuto" . ($minutos === 1 ? '' : 's') . " antes de pedir outro código."];
+    }
+
+    // Expiração comparada dentro do SQL (NOW() do MySQL) -- ver mesma nota
+    // acima sobre não misturar strtotime()/time() do PHP com horário vindo
+    // do MySQL.
+    $stmt = $pdo->prepare(
+        "SELECT token_verificacao_whatsapp, (token_verificacao_whatsapp_expira_em > NOW()) AS codigo_valido
+         FROM clientes WHERE id_cliente = :id"
+    );
+    $stmt->execute([':id' => $id_cliente]);
+    $atual = $stmt->fetch();
+
+    $codigoAindaValido = $atual && !empty($atual['token_verificacao_whatsapp']) && $atual['codigo_valido'];
+
+    if ($codigoAindaValido) {
+        return enviarCodigoWhatsapp($pdo, $id_cliente, $whatsapp, $nome, $atual['token_verificacao_whatsapp']);
+    }
+
+    return dispararVerificacaoWhatsapp($pdo, $id_cliente, $whatsapp, $nome);
+}
+
+/**
+ * Manda o código de verificação por WhatsApp -- não fala com a Evolution
+ * API diretamente. Manda um único POST pro webhook do n8n (config_dev.
+ * n8n_webhook_url) levando o código E as credenciais da Evolution API desta
+ * instalação (base_url/api_key/instancia, também de config_dev). O
+ * workflow do n8n é genérico (o mesmo arquivo serve qualquer instalação
+ * deste sistema, feita por qualquer dev) -- ele usa o que chega em cada
+ * chamada pra decidir em qual Evolution API/instância mandar a mensagem,
+ * nunca tem credencial fixa dentro dele.
+ *
+ * Grava whatsapp_ultimo_envio_em (usada pela trava de 10min em
+ * segundosDeEsperaReenvioWhatsapp()) assim que confirma que vai tentar
+ * enviar de verdade -- antes da chamada ao webhook, não depois, pra contar
+ * mesmo se a chamada falhar (evita um loop rápido de tentativas se o
+ * n8n/Evolution estiverem fora do ar). Só NÃO conta se nem chegou a tentar
+ * (webhook não configurado).
+ */
+function enviarCodigoWhatsapp(PDO $pdo, int $id_cliente, string $whatsapp, string $nome, string $codigo): array
+{
+    $config = $pdo->query(
+        'SELECT n8n_webhook_url, evolution_base_url, evolution_api_key FROM config_dev WHERE id_config = 1'
+    )->fetch();
+
+    // A mensagem sai pelo número que o lojista conectou (instância da loja); sem número conectado não há envio.
+    $instancia = whatsappInstanciaAtiva($pdo);
+
+    if (!$config || empty($config['n8n_webhook_url']) || $instancia === null) {
+        return ['success' => false, 'message' => 'Verificação por WhatsApp não configurada.'];
+    }
+
+    $pdo->prepare('UPDATE clientes SET whatsapp_ultimo_envio_em = NOW() WHERE id_cliente = :id')
+        ->execute([':id' => $id_cliente]);
+
+    $configLoja = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetch();
+    $nomeLoja = $configLoja['nome_loja'] ?? 'a loja';
+    $primeiroNome = explode(' ', trim($nome))[0];
+
+    $payload = [
+        'evolution' => [
+            'base_url' => $config['evolution_base_url'],
+            'api_key' => $config['evolution_api_key'],
+            'instancia' => $instancia,
+        ],
+        'telefone' => $whatsapp,
+        'codigo' => $codigo,
+        'nome' => $primeiroNome,
+        'loja' => $nomeLoja,
+        'mensagem' => "Olá, {$primeiroNome}! Seu código de verificação na {$nomeLoja} é: *{$codigo}*. Ele é válido por 30 minutos. Não compartilhe esse código com ninguém.",
+    ];
+
+    $ch = curl_init($config['n8n_webhook_url']);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $resposta = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $erroCurl = curl_error($ch);
+
+    if ($resposta === false) {
+        error_log('Falha ao chamar o webhook do n8n (WhatsApp): ' . $erroCurl);
+        return ['success' => false, 'message' => 'Não foi possível enviar o código agora. Tente novamente em instantes.'];
+    }
+    if ($httpCode >= 300) {
+        error_log('Webhook do n8n (WhatsApp) devolveu erro: HTTP ' . $httpCode . ' — ' . $resposta);
+        return ['success' => false, 'message' => 'Não foi possível enviar o código agora. Tente novamente em instantes.'];
+    }
+
+    return ['success' => true, 'message' => 'Código enviado pro seu WhatsApp.'];
+}
+
+/**
+ * Processa o webhook do Mercado Pago pro fluxo da loja online (checkout) —
+ * chamado pelo endpoint único em integracoes/mercado_pago/webhook.php quando
+ * o external_reference do pagamento começa com "loja_".
+ */
+function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, string $dataId): void
+{
+    $statusPagamento = $pagamento['status'] ?? null;
+
+    if ($statusPagamento === 'approved') {
+        $stmt = $pdo->prepare("SELECT status FROM vendas WHERE id_venda = :id AND origem = 'loja'");
+        $stmt->execute([':id' => $id_venda]);
+        $venda = $stmt->fetch();
+
+        if ($venda && $venda['status'] === 'Reservado') {
+            $valorPago = (float) ($pagamento['transaction_amount'] ?? 0);
+            $resultado = finalizarVenda($pdo, $id_venda, [['forma' => 'Mercado Pago', 'valor' => $valorPago]], $dataId);
+
+            if (!$resultado['success']) {
+                error_log('Webhook loja MP: falha ao finalizar venda ' . $id_venda . ': ' . $resultado['message']);
+
+                // Só falta de estoque real cancela a venda automaticamente — nesse caso não
+                // tem como entregar o pedido, então liberar a reserva é o certo.
+                //
+                // O Mercado Pago pode entregar a mesma notificação mais de uma vez.
+                // Se duas chamadas concorrentes chegarem aqui, o FOR UPDATE dentro de
+                // finalizarVenda() garante que só uma finalize a venda — a outra recebe
+                // success:false só porque perdeu a corrida. Por isso o UPDATE guardado
+                // roda primeiro: só quem realmente transiciona Reservado -> Cancelado
+                // (rowCount() > 0) é que devolve a reserva. Isso evita devolver estoque
+                // que já foi legitimamente consumido pela chamada vencedora.
+                if (str_contains($resultado['message'], 'Estoque insuficiente')) {
+                    $cancelou = $pdo->prepare("UPDATE vendas SET status = 'Cancelado' WHERE id_venda = :id AND status = 'Reservado'");
+                    $cancelou->execute([':id' => $id_venda]);
+                    if ($cancelou->rowCount() > 0) {
+                        devolverReservaDaVenda($pdo, $id_venda);
+                    }
+                }
+                // Outros motivos de falha (pagamento parcial/insuficiente, venda já finalizada por uma
+                // notificação concorrente, erro transitório de lock) NÃO cancelam a venda automaticamente —
+                // ficam só registrados no log acima. A venda continua 'Reservado', podendo ainda ser
+                // finalizada por uma notificação subsequente (ex.: segunda parte de um pagamento dividido)
+                // ou expirar normalmente pelo prazo de reserva se for realmente abandonada.
+            }
+        }
+    } elseif (in_array($statusPagamento, ['rejected', 'cancelled'], true)) {
+        // Cartão recusado, Pix cancelado/expirado no lado do Mercado Pago etc. — não é
+        // culpa do cliente ter chegado primeiro no produto, então ele ganha um novo
+        // prazo de reserva inteiro pra tentar de novo (novo Pix, outro cartão) em vez
+        // de perder o item na hora. Só reinicia venda que ainda está 'Reservado' — se
+        // já foi finalizada ou cancelada por outro caminho, não mexe em nada.
+        $pdo->prepare(
+            "UPDATE vendas SET data_venda = NOW(), pagamento_expira_em = NULL
+             WHERE id_venda = :id AND origem = 'loja' AND status = 'Reservado'"
+        )->execute([':id' => $id_venda]);
+    }
+}
+
+
+/**
+ * Selo de "esse contato já foi validado pelo cliente?" pras telas do admin
+ * (lista/detalhe de clientes) -- o lojista usa isso pra saber por onde pode
+ * falar com o cliente com confiança. $validacaoAtiva só importa pro WhatsApp:
+ * com a validação por WhatsApp desligada no painel_dev, nenhum cliente tem
+ * como validar, então "não validado" seria enganoso.
+ */
+function seloContatoValidado(bool $temContato, ?string $validadoEm, bool $validacaoAtiva = true): string
+{
+    if (!$temContato) {
+        return '<span class="status-pill">Sem cadastro</span>';
+    }
+    if ($validadoEm !== null && $validadoEm !== '') {
+        return '<span class="status-pill sucesso" title="Validado em ' . htmlspecialchars(date('d/m/Y H:i', strtotime($validadoEm))) . '">✓ Validado</span>';
+    }
+    if (!$validacaoAtiva) {
+        return '<span class="status-pill" title="A validação por WhatsApp está desativada no sistema">Sem validação</span>';
+    }
+    return '<span class="status-pill alerta">Não validado</span>';
+}
+
+/**
+ * Frase curta dizendo qual canal é confiável agora, montada a partir do que o
+ * cliente já validou.
+ */
+function resumoCanalConfiavel(bool $whatsappValidado, bool $emailValidado, bool $whatsappAtivo): string
+{
+    if ($whatsappValidado && $emailValidado) {
+        return 'WhatsApp e e-mail validados — pode falar por qualquer um dos dois com confiança.';
+    }
+    if ($whatsappValidado) {
+        return 'WhatsApp validado — pode falar por aqui com confiança.';
+    }
+    if ($emailValidado) {
+        return $whatsappAtivo
+            ? 'O WhatsApp ainda não foi validado (o número pode estar errado) — prefira o e-mail, que já foi validado.'
+            : 'E-mail validado — prefira ele pra falar com o cliente.';
+    }
+    return 'O cliente ainda não validou nenhum contato — o WhatsApp e o e-mail cadastrados podem estar errados.';
+}

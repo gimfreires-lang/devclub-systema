@@ -1,0 +1,175 @@
+<?php
+require_once __DIR__ . '/../conecta_bd.php';
+require_once __DIR__ . '/../includes/auth.php';
+exigirAdmin();
+
+$erro = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id_solicitacao = (int) ($_POST['id_solicitacao'] ?? 0);
+    $acao = $_POST['acao'] ?? '';
+
+    $stmt = $pdo->prepare("SELECT id_cliente, valor_solicitado FROM solicitacoes_credito WHERE id_solicitacao = :id AND status = 'Pendente'");
+    $stmt->execute([':id' => $id_solicitacao]);
+    $solicitacao = $stmt->fetch();
+
+    if (!$solicitacao) {
+        $erro = 'Solicitação não encontrada ou já respondida.';
+    } elseif ($acao === 'aprovar') {
+        $valorAprovado = converterMoedaBrParaFloat($_POST['valor_aprovado'] ?? '0');
+        if ($valorAprovado <= 0) {
+            $erro = 'Informe um valor de limite válido.';
+        } else {
+            $pdo->beginTransaction();
+            $pdo->prepare('UPDATE clientes SET limite_credito = :limite WHERE id_cliente = :ic')
+                ->execute([':limite' => $valorAprovado, ':ic' => $solicitacao['id_cliente']]);
+            $pdo->prepare(
+                "UPDATE solicitacoes_credito SET status = 'Aprovada', valor_aprovado = :va, respondido_em = NOW(), respondido_por = :ru WHERE id_solicitacao = :id"
+            )->execute([':va' => $valorAprovado, ':ru' => $_SESSION['id_usuario'], ':id' => $id_solicitacao]);
+            $pdo->commit();
+            header('Location: /clientes/solicitacoes_credito.php?respondido=1');
+            exit;
+        }
+    } elseif ($acao === 'rejeitar') {
+        $observacao = trim($_POST['observacao_admin'] ?? '') ?: null;
+        $pdo->prepare(
+            "UPDATE solicitacoes_credito SET status = 'Rejeitada', observacao_admin = :obs, respondido_em = NOW(), respondido_por = :ru WHERE id_solicitacao = :id"
+        )->execute([':obs' => $observacao, ':ru' => $_SESSION['id_usuario'], ':id' => $id_solicitacao]);
+        header('Location: /clientes/solicitacoes_credito.php?respondido=1');
+        exit;
+    } else {
+        $erro = 'Ação inválida.';
+    }
+}
+
+$pendentes = $pdo->query(
+    "SELECT sc.id_solicitacao, sc.valor_solicitado, sc.criado_em, c.nome, c.whatsapp, c.limite_credito
+     FROM solicitacoes_credito sc
+     JOIN clientes c ON c.id_cliente = sc.id_cliente
+     WHERE sc.status = 'Pendente' AND c.excluido_em IS NULL
+     ORDER BY sc.criado_em ASC"
+)->fetchAll();
+
+$respondidas = $pdo->query(
+    "SELECT sc.id_solicitacao, sc.valor_solicitado, sc.status, sc.valor_aprovado, sc.respondido_em, c.nome
+     FROM solicitacoes_credito sc
+     JOIN clientes c ON c.id_cliente = sc.id_cliente
+     WHERE sc.status != 'Pendente'
+     ORDER BY sc.respondido_em DESC
+     LIMIT 20"
+)->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Solicitações de crédito</title></head>
+<body>
+<?php require __DIR__ . '/../includes/admin_header.php'; ?>
+    <div class="page-title">
+        <span class="icone-titulo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/></svg></span>
+        <div>
+            <h1>Solicitações de crédito</h1>
+            <span class="subtitulo"><?= count($pendentes) ?> pendente<?= count($pendentes) === 1 ? '' : 's' ?></span>
+        </div>
+    </div>
+    <?php if (isset($_GET['respondido'])): ?><p class="alert alert-sucesso">Solicitação respondida.</p><?php endif; ?>
+    <?php if ($erro): ?><p class="alert alert-erro"><?= htmlspecialchars($erro) ?></p><?php endif; ?>
+
+    <div class="card">
+        <h2>Pendentes</h2>
+        <?php if (empty($pendentes)): ?>
+            <p class="alert alert-info">Nenhuma solicitação pendente.</p>
+        <?php else: ?>
+        <div class="alternador-visualizacao" data-chave="solicitacoes-credito" data-alvo-lista="visualizacao-lista" data-alvo-cards="visualizacao-cards">
+            <button type="button" class="btn-sm btn-outline" data-modo="lista" title="Ver em lista">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="btn-sm btn-outline" data-modo="cards" title="Ver em cards">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+
+        <div id="visualizacao-lista">
+        <div class="tabela-wrap">
+        <table>
+            <tr><th>Cliente</th><th>WhatsApp</th><th>Limite atual</th><th>Valor pedido</th><th>Data</th><th>Responder</th></tr>
+            <?php foreach ($pendentes as $s): ?>
+            <tr>
+                <td><?= htmlspecialchars($s['nome']) ?></td>
+                <td><?= htmlspecialchars($s['whatsapp']) ?></td>
+                <td>R$ <?= number_format($s['limite_credito'], 2, ',', '.') ?></td>
+                <td>R$ <?= number_format($s['valor_solicitado'], 2, ',', '.') ?></td>
+                <td><?= htmlspecialchars(date('d/m/Y', strtotime($s['criado_em']))) ?></td>
+                <td class="celula-acoes">
+                    <form method="post" class="form-linha-compacta">
+                        <input type="hidden" name="id_solicitacao" value="<?= $s['id_solicitacao'] ?>">
+                        <input type="hidden" name="acao" value="aprovar">
+                        <input type="text" name="valor_aprovado" value="<?= number_format($s['valor_solicitado'], 2, ',', '.') ?>" class="campo-valor-curto js-mascara-moeda">
+                        <button type="submit" class="btn-sm">Aprovar</button>
+                    </form>
+                    <form method="post" data-confirm="Rejeitar esta solicitação?">
+                        <input type="hidden" name="id_solicitacao" value="<?= $s['id_solicitacao'] ?>">
+                        <input type="hidden" name="acao" value="rejeitar">
+                        <button type="submit" class="btn-sm btn-perigo">Rejeitar</button>
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+        </div>
+        </div>
+
+        <div id="visualizacao-cards" hidden>
+        <div class="grade-cards">
+            <?php foreach ($pendentes as $s): ?>
+            <div class="item-card">
+                <div class="item-card-topo">
+                    <strong><?= htmlspecialchars($s['nome']) ?></strong>
+                    <span class="status-pill">R$ <?= number_format($s['valor_solicitado'], 2, ',', '.') ?></span>
+                </div>
+                <p>WhatsApp: <?= htmlspecialchars($s['whatsapp']) ?></p>
+                <p>Limite atual: R$ <?= number_format($s['limite_credito'], 2, ',', '.') ?></p>
+                <p>Pedido em <?= htmlspecialchars(date('d/m/Y', strtotime($s['criado_em']))) ?></p>
+                <div class="celula-acoes">
+                    <form method="post" class="form-linha-compacta">
+                        <input type="hidden" name="id_solicitacao" value="<?= $s['id_solicitacao'] ?>">
+                        <input type="hidden" name="acao" value="aprovar">
+                        <input type="text" name="valor_aprovado" value="<?= number_format($s['valor_solicitado'], 2, ',', '.') ?>" class="campo-valor-curto js-mascara-moeda">
+                        <button type="submit" class="btn-sm">Aprovar</button>
+                    </form>
+                    <form method="post" data-confirm="Rejeitar esta solicitação?">
+                        <input type="hidden" name="id_solicitacao" value="<?= $s['id_solicitacao'] ?>">
+                        <input type="hidden" name="acao" value="rejeitar">
+                        <button type="submit" class="btn-sm btn-perigo">Rejeitar</button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <h2>Últimas respondidas</h2>
+        <?php if (empty($respondidas)): ?>
+            <p class="alert alert-info">Nenhuma ainda.</p>
+        <?php else: ?>
+        <div class="tabela-wrap">
+        <table>
+            <tr><th>Cliente</th><th>Pedido</th><th>Status</th><th>Aprovado</th><th>Data</th></tr>
+            <?php foreach ($respondidas as $s): ?>
+            <tr>
+                <td><?= htmlspecialchars($s['nome']) ?></td>
+                <td>R$ <?= number_format($s['valor_solicitado'], 2, ',', '.') ?></td>
+                <td><span class="status-pill<?= $s['status'] === 'Aprovada' ? ' sucesso' : ' erro' ?>"><?= htmlspecialchars($s['status']) ?></span></td>
+                <td><?= $s['valor_aprovado'] !== null ? 'R$ ' . number_format($s['valor_aprovado'], 2, ',', '.') : '—' ?></td>
+                <td><?= htmlspecialchars(date('d/m/Y', strtotime($s['respondido_em']))) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+        </div>
+        <?php endif; ?>
+    </div>
+</main>
+</body>
+</html>

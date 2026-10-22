@@ -1,0 +1,1309 @@
+/* assets/css/loja.css — mobile-first, usa as variáveis de includes/tema.php.
+   Identidade visual da Loja Online: as 4 cores continuam vindo da configuração
+   do lojista (Aparência); tudo o resto (tipografia, sombra, cantos, grade,
+   carrossel, menu mobile) é fixo, pensado pra parecer um site premium em
+   qualquer tema escolhido. */
+
+:root {
+    --cor-texto-suave: color-mix(in srgb, var(--cor-texto) 55%, var(--cor-fundo));
+    --cor-borda: color-mix(in srgb, var(--cor-texto) 15%, var(--cor-fundo));
+    --cor-primaria-hover: color-mix(in srgb, var(--cor-primaria) 85%, black);
+    --cor-secundaria-hover: color-mix(in srgb, var(--cor-secundaria) 85%, black);
+    --cor-fundo-alt: color-mix(in srgb, var(--cor-primaria) 6%, var(--cor-fundo));
+    --cor-primaria-suave: color-mix(in srgb, var(--cor-primaria) 12%, var(--cor-fundo));
+    --cor-erro: #DC2626;
+    --cor-erro-fundo: #FEE2E2;
+    --cor-sucesso: #16A34A;
+    --cor-sucesso-fundo: #DCFCE7;
+
+    /* Dourado é um acento fixo de "oportunidade" — não faz parte do tema do
+       lojista, é sempre a mesma cor pra sinalizar "isso acabou de voltar". */
+    --cor-dourado: #C9971F;
+    --cor-dourado-suave: #FBF1DA;
+
+    /* Cores fixas das etapas de status de pedido — cada etapa precisa ser
+       reconhecível de relance, então não seguem o tema do lojista, igual
+       o dourado de oportunidade acima. */
+    --cor-preparando: #B45309;
+    --cor-preparando-fundo: #FEF3C7;
+    --cor-pronto: #2563EB;
+    --cor-pronto-fundo: #DBEAFE;
+    --cor-enviado: #0D9488;
+    --cor-enviado-fundo: #CCFBF1;
+
+    --fonte-titulo: 'Fraunces', Georgia, serif;
+    --fonte-corpo: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+    --raio-sm: 10px;
+    --raio-md: 16px;
+    --raio-lg: 24px;
+
+    --sombra-sm: 0 1px 2px rgba(17, 12, 4, 0.06), 0 1px 3px rgba(17, 12, 4, 0.08);
+    --sombra-md: 0 6px 16px rgba(17, 12, 4, 0.08), 0 2px 6px rgba(17, 12, 4, 0.06);
+    --sombra-lg: 0 16px 40px rgba(17, 12, 4, 0.14), 0 4px 12px rgba(17, 12, 4, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--fonte-corpo);
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+a { color: var(--cor-primaria); }
+
+h1, h2, h3 {
+    font-family: var(--fonte-titulo);
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 0 0 12px;
+}
+
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 600; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+
+p { margin: 0 0 12px; }
+
+/* ============ Títulos de página ============ */
+
+.banner-hero {
+    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
+    color: #fff;
+    border-radius: var(--raio-lg);
+    padding: 34px 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.banner-hero h1 { color: #fff; margin-bottom: 6px; }
+.banner-hero p { color: rgba(255, 255, 255, 0.92); margin: 0; }
+
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.page-title .icone-titulo {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--raio-sm);
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.page-title .icone-titulo svg { width: 24px; height: 24px; }
+.page-title h1 { margin-bottom: 2px; }
+.page-title .subtitulo { color: var(--cor-texto-suave); font-size: 0.9rem; }
+
+.container {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 16px 40px;
+}
+
+/* ============ Cabeçalho / navegação ============ */
+
+.site-header {
+    background: var(--cor-fundo-alt);
+    border-bottom: 1px solid var(--cor-borda);
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(6px);
+}
+
+.site-header-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
+}
+
+.site-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-family: var(--fonte-titulo);
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.site-logo img { max-height: 38px; width: auto; border-radius: 6px; }
+
+/* Botão hambúrguer — só existe visualmente no mobile (ver media query) */
+.nav-toggle {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    order: 2;
+}
+
+.nav-toggle span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--cor-texto);
+    border-radius: 2px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+.site-nav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: absolute;
+    left: -16px;
+    right: -16px;
+    top: 100%;
+    background: var(--cor-fundo);
+    border-bottom: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-lg);
+    padding: 4px 16px 12px;
+    order: 3;
+    width: calc(100% + 32px);
+}
+
+.site-nav.aberto { display: flex; }
+
+.site-nav a, .site-nav .site-nav-user {
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--cor-borda);
+    font-weight: 500;
+}
+
+.site-nav a { color: var(--cor-texto); text-decoration: none; }
+.site-nav a:hover { color: var(--cor-primaria); }
+.site-nav .site-nav-user { color: var(--cor-texto-suave); font-weight: 400; }
+
+/* Sair é sempre vermelho no hover — regra fixa, não muda com o tema da loja. */
+.site-nav a.link-sair:hover { color: var(--cor-erro); }
+
+/* Modal de confirmação (ex: sair da conta) — nunca alert()/confirm() do
+   navegador, sempre dentro da própria tela, com a cara do site. */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 12, 4, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+}
+
+.modal-overlay[hidden] { display: none; }
+
+.modal-card {
+    background: var(--cor-fundo);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-lg);
+    padding: 28px 24px;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+}
+
+.modal-card h3 { margin-bottom: 8px; }
+.modal-card p { color: var(--cor-texto-suave); margin-bottom: 22px; }
+
+.modal-acoes { display: flex; gap: 10px; }
+.modal-acoes .btn, .modal-acoes .btn-outline { flex: 1; margin: 0; }
+
+/* ============ Botões — sempre botão de verdade, nunca link de texto ============ */
+
+button, input[type="submit"], .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 22px;
+    min-height: 46px;
+    border: none;
+    border-radius: var(--raio-sm);
+    background: var(--cor-primaria);
+    color: #fff;
+    font-family: var(--fonte-corpo);
+    font-weight: 600;
+    font-size: 0.98rem;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: var(--sombra-sm);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+button:hover, input[type="submit"]:hover, .btn:hover {
+    background: var(--cor-primaria-hover);
+    box-shadow: var(--sombra-md);
+    transform: translateY(-1px);
+}
+
+button:active, input[type="submit"]:active, .btn:active { transform: translateY(0); }
+
+button:disabled, input[type="submit"]:disabled, .btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-secundario { background: var(--cor-secundaria); }
+.btn-secundario:hover { background: var(--cor-secundaria-hover); }
+
+.btn-outline {
+    background: transparent;
+    color: var(--cor-primaria);
+    border: 1.5px solid var(--cor-primaria);
+    box-shadow: none;
+}
+.btn-outline:hover { background: var(--cor-primaria-suave); box-shadow: none; }
+
+.btn-texto {
+    display: inline-block;
+    background: transparent;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    box-shadow: none;
+    padding: 8px 4px;
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+.btn-texto:hover { background: transparent; color: var(--cor-primaria); box-shadow: none; transform: none; }
+
+.btn-bloco { display: flex; width: 100%; }
+.btn-lg { padding: 15px 26px; font-size: 1.05rem; }
+
+/* Botão "Pagar com Linha de Crédito" tem um rótulo + o valor disponível —
+   empilhados em duas linhas centralizadas, cada um quebrando dentro de si
+   mesmo, em vez de tudo virar uma linha só que quebra no meio das palavras
+   sem critério nenhum quando o botão fica estreito. */
+#btn-pagar-credito {
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+    line-height: 1.35;
+}
+#btn-pagar-credito .rotulo-credito { display: block; }
+#texto-credito-disponivel { display: block; font-size: 0.82rem; font-weight: 500; opacity: 0.9; }
+
+/* ============ Formulários ============ */
+
+label { display: block; margin-bottom: 14px; font-size: 0.95rem; font-weight: 500; }
+
+input[type="text"], input[type="password"], input[type="email"], input[type="file"],
+select, textarea {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 11px 14px;
+    min-height: 46px;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    font-size: 1rem;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    font-family: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px var(--cor-primaria-suave);
+}
+
+textarea { min-height: 88px; }
+
+/* Feedback ao vivo de senha válida (6+ caracteres) no cadastro da loja */
+input.senha-valida {
+    border-color: var(--cor-sucesso);
+    background: var(--cor-sucesso-fundo);
+}
+input.senha-valida:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor-sucesso) 20%, transparent);
+}
+
+/* Cartão de autenticação — cadastro/login/ativar conta, centralizado */
+.auth-card {
+    max-width: 420px;
+    margin: 24px auto 0;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-md);
+    padding: 28px 22px;
+}
+
+.auth-card h1, .auth-card h2 { text-align: center; }
+
+/* ============ Alertas ============ */
+
+.alert {
+    padding: 14px 16px;
+    border-radius: var(--raio-sm);
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+.alert-erro { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.alert-sucesso { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+
+.alert-oportunidade {
+    background: var(--cor-dourado-suave);
+    color: #6B4E0E;
+    border: 1px solid var(--cor-dourado);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert-oportunidade[hidden] { display: none; }
+
+.alert-info {
+    background: var(--cor-fundo-alt);
+    color: var(--cor-texto-suave);
+    border: 1px solid var(--cor-borda);
+    font-size: 0.9rem;
+}
+
+/* ============ Categorias (pills) ============ */
+
+.categorias {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 20px;
+}
+
+.categoria-pill {
+    display: inline-flex;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1.5px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.categoria-pill:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+
+.categoria-pill.ativa {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: #fff;
+}
+
+/* ============ Carrossel (cartão do catálogo e página de produto) ============ */
+
+.carousel { position: relative; }
+
+.carousel-track {
+    display: flex;
+    height: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-radius: inherit;
+}
+
+.carousel-track::-webkit-scrollbar { display: none; }
+
+.carousel-track img {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    scroll-snap-align: start;
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    pointer-events: none;
+}
+
+.carousel-dots .dot {
+    pointer-events: all;
+    width: 6px;
+    height: 6px;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--cor-primaria);
+    opacity: 0.55;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+    border: none;
+}
+
+.carousel-dots .dot.ativo { opacity: 1; width: 16px; border-radius: 4px; }
+
+.carousel-prev, .carousel-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    min-height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--cor-texto);
+    box-shadow: var(--sombra-md);
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0;
+}
+
+.carousel-prev:hover, .carousel-next:hover { background: #fff; transform: translateY(-50%); }
+.carousel-prev { left: 10px; }
+.carousel-next { right: 10px; }
+
+/* ============ Cartões / grade de produtos ============ */
+/* No mobile, SEMPRE 2 colunas — nunca 1 por linha. */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.product-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 10px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    box-shadow: var(--sombra-sm);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative;
+}
+
+.product-card:hover { transform: translateY(-3px); box-shadow: var(--sombra-md); }
+
+.product-card .card-media {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+    background: var(--cor-fundo-alt);
+    margin-bottom: 10px;
+}
+
+.product-card .card-media img { width: 100%; height: 100%; object-fit: cover; }
+
+.product-card .nome {
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin-bottom: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-card .price { font-weight: 700; color: var(--cor-primaria); font-size: 1rem; margin-top: auto; }
+
+/* Cartão de item que voltou pro estoque — "nova oportunidade" */
+.product-card.voltou {
+    border: 2px solid var(--cor-dourado);
+    box-shadow: 0 0 0 4px var(--cor-dourado-suave), var(--sombra-md);
+}
+
+/* Cartão de item reservado no carrinho de outro cliente — ainda não vendido de
+   verdade, então continua na vitrine (só mais discreto que um item disponível). */
+.product-card.reservado .card-media img { opacity: 0.65; }
+.product-card.reservado .price { opacity: 0.6; }
+
+.tag-reservado {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    background: #6B7280;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 4px 9px;
+    border-radius: 999px;
+    box-shadow: var(--sombra-sm);
+}
+
+.tag-oportunidade {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    background: var(--cor-dourado);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 4px 9px;
+    border-radius: 999px;
+    box-shadow: var(--sombra-sm);
+}
+
+/* Botão de ação circular (favoritar/compartilhar) — usado tanto solto (produto.php)
+   quanto empilhado no canto do cartão do catálogo (.card-acoes). Precisa ser uma
+   regra de nível geral, não só ".card-acoes .botao-acao": um <button> sem essa
+   classe do lado de fora do cartão continua caindo na regra genérica de botão
+   (fundo roxo, tamanho grande) e o ícone dentro dele nunca aparece direito. */
+.botao-acao {
+    width: 44px;
+    height: 44px;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: var(--sombra-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--cor-borda);
+    cursor: pointer;
+}
+
+.botao-acao:hover { background: #fff; transform: none; box-shadow: var(--sombra-sm); }
+.icon-coracao { width: 20px; height: 20px; fill: none; stroke: #4B5563; stroke-width: 2; }
+.favoritar.ativo .icon-coracao { fill: #EF4444; stroke: #EF4444; }
+.icon-whatsapp { width: 20px; height: 20px; fill: #25D366; }
+
+/* Ações rápidas no canto do cartão — favoritar e compartilhar, sem sair do catálogo */
+.card-acoes {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card-acoes .botao-acao {
+    width: 32px;
+    height: 32px;
+    border: none;
+}
+
+.card-acoes .icon-coracao, .card-acoes .icon-whatsapp { width: 17px; height: 17px; }
+
+.product-card.indisponivel { opacity: 0.55; }
+
+.product-card.indisponivel .card-media img { filter: grayscale(60%); }
+
+.tag-indisponivel {
+    display: inline-block;
+    background: var(--cor-texto);
+    color: var(--cor-fundo);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-top: 4px;
+}
+
+/* ============ Página de produto ============ */
+
+.produto-carousel {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--raio-lg);
+    overflow: hidden;
+    background: var(--cor-fundo-alt);
+    box-shadow: var(--sombra-md);
+    margin-bottom: 20px;
+}
+
+.produto-categoria {
+    display: inline-block;
+    color: var(--cor-texto-suave);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+.produto-preco {
+    font-family: var(--fonte-titulo);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--cor-primaria);
+    margin: 10px 0 4px;
+}
+
+.disponibilidade { color: var(--cor-texto-suave); font-size: 0.88rem; margin-bottom: 18px; }
+.disponibilidade-baixa { color: var(--cor-erro); font-weight: 700; }
+
+.secao-relacionados {
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--cor-borda);
+}
+
+/* Produto removido/vendido e o link antigo continua circulando (WhatsApp,
+   favoritos, histórico do Google) -- em vez de um 404 seco, uma tela
+   acolhedora que já empurra pro catálogo. */
+.estado-vazio-produto {
+    max-width: 480px;
+    margin: 48px auto 0;
+    text-align: center;
+    padding: 0 20px;
+}
+.estado-vazio-produto svg { margin-bottom: 18px; }
+.estado-vazio-produto h1 { margin-bottom: 10px; }
+.estado-vazio-produto p { color: var(--cor-texto-suave); margin-bottom: 24px; }
+
+/* ============ Carrinho ============ */
+
+.carrinho-item {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.carrinho-item .foto {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+    background: var(--cor-fundo-alt);
+}
+
+.carrinho-item .foto img { width: 100%; height: 100%; object-fit: cover; }
+
+.carrinho-item .info .nome { font-weight: 600; margin-bottom: 2px; }
+.carrinho-item .info .variacao { color: var(--cor-texto-suave); font-size: 0.88rem; margin-bottom: 8px; }
+
+.carrinho-item .linha-controle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 380px;
+}
+
+.stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.stepper button {
+    background: transparent;
+    color: var(--cor-primaria);
+    box-shadow: none;
+    min-height: 36px;
+    width: 36px;
+    padding: 0;
+    font-size: 1.1rem;
+    border-radius: 0;
+}
+
+.stepper button:hover { background: var(--cor-primaria-suave); box-shadow: none; transform: none; }
+.stepper button:disabled { opacity: 0.35; }
+
+.stepper .qtd {
+    min-width: 28px;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.carrinho-item .subtotal { font-weight: 700; white-space: nowrap; }
+
+.btn-remover {
+    background: transparent;
+    color: var(--cor-erro);
+    box-shadow: none;
+    padding: 8px 4px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    min-height: auto;
+}
+.btn-remover:hover { background: transparent; box-shadow: none; transform: none; text-decoration: underline; }
+
+/* Cronômetro do carrinho */
+.timer-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--cor-fundo-alt);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.timer-card .relogio {
+    font-family: var(--fonte-titulo);
+    font-size: 1.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--cor-primaria);
+    min-width: 64px;
+}
+
+.timer-card .texto { font-size: 0.88rem; color: var(--cor-texto-suave); }
+
+.timer-card.urgente {
+    background: var(--cor-erro-fundo);
+    border-color: var(--cor-erro);
+}
+.timer-card.urgente .relogio { color: var(--cor-erro); }
+
+.resumo-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 16px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-top: 2px solid var(--cor-borda);
+    margin-top: 8px;
+}
+
+/* ============ Cards de pedido (meus pedidos) ============ */
+
+.pedidos-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.pedido-card {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 14px;
+    align-items: center;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    padding: 14px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pedido-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-md); }
+
+.pedido-card .foto { width: 68px; height: 68px; border-radius: var(--raio-sm); overflow: hidden; background: var(--cor-fundo-alt); }
+.pedido-card .foto img { width: 100%; height: 100%; object-fit: cover; }
+.pedido-card .numero { font-weight: 700; }
+.pedido-card .data { color: var(--cor-texto-suave); font-size: 0.85rem; }
+.pedido-card .total { font-weight: 700; margin-top: 4px; }
+
+/* Distingue compra feita no PDV (presencial) de compra pela loja online —
+   mesmo cliente, mesmo histórico, mas a origem é bem diferente pra ele. */
+.origem-pedido { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--cor-texto-suave); margin-top: 6px; }
+.origem-pedido svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    /* Raio pequeno (não é mais uma "cápsula" 999px) — o texto de alguns
+       status é longo e quebra em 2 linhas dentro do cartão; com raio total
+       isso vira um blob arredondado feio. Um raio pequeno continua bonito
+       tanto com 1 linha quanto com 2. */
+    border-radius: var(--raio-sm);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.3;
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    margin-top: 6px;
+}
+
+.status-pill.cancelado { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.status-pill.concluido { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+.status-pill.preparando { background: var(--cor-preparando-fundo); color: var(--cor-preparando); }
+.status-pill.pronto { background: var(--cor-pronto-fundo); color: var(--cor-pronto); }
+.status-pill.enviado { background: var(--cor-enviado-fundo); color: var(--cor-enviado); }
+
+/* ============ Meus débitos ============ */
+
+.saldo-hero {
+    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
+    color: #fff;
+    border-radius: var(--raio-lg);
+    padding: 26px 22px;
+    box-shadow: var(--sombra-md);
+}
+
+.saldo-hero .rotulo { font-size: 0.85rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.04em; }
+.saldo-hero .valor { font-family: var(--fonte-titulo); font-size: 2.2rem; font-weight: 600; margin: 4px 0 14px; }
+.saldo-hero .linha { display: flex; justify-content: space-between; font-size: 0.9rem; opacity: 0.92; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.25); }
+
+.pagamento-seguro {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--cor-texto-suave);
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+.extrato-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.extrato-item .foto {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+    background: var(--cor-fundo-alt);
+    flex-shrink: 0;
+}
+
+.extrato-item .foto img { width: 100%; height: 100%; object-fit: cover; }
+.extrato-item .desc-wrap { flex: 1; min-width: 0; }
+.extrato-item .desc { font-weight: 600; }
+.extrato-item .data { color: var(--cor-texto-suave); font-size: 0.82rem; }
+.extrato-item .variacao { color: var(--cor-texto-suave); font-size: 0.82rem; }
+.extrato-item .valor { font-weight: 700; white-space: nowrap; }
+.extrato-item .valor.pagamento { color: var(--cor-sucesso); }
+
+/* ============ Tabelas — nunca deixa a PÁGINA rolar na horizontal ============ */
+
+table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-align: left; }
+
+/* ============ Rodapé ============ */
+/* A barra final é sempre escura, de propósito — não segue o tema da loja,
+   igual o botão do WhatsApp é sempre verde. São elementos de identidade
+   fixos do site, não da vitrine. */
+
+.site-footer { margin-top: 56px; }
+
+.footer-contato {
+    background: var(--cor-fundo-alt);
+    border-top: 1px solid var(--cor-borda);
+    padding: 26px 0;
+}
+
+.footer-contato-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.footer-contato-grid > div { font-size: 0.9rem; }
+
+.footer-contato-grid .rotulo {
+    display: block;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    margin-bottom: 2px;
+}
+
+.footer-final {
+    background: #17130F;
+    color: #C9C2B6;
+    padding: 26px 16px;
+}
+
+.footer-final-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.footer-final .footer-logo {
+    font-family: var(--fonte-titulo);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.footer-final a { color: #fff; text-decoration: underline; }
+
+.whatsapp-flutuante {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    width: 58px;
+    height: 58px;
+    min-height: 0;
+    border-radius: 50%;
+    background: #25D366;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--sombra-lg);
+    z-index: 60;
+    transition: transform 0.15s ease;
+}
+
+.whatsapp-flutuante:hover { background: #25D366; transform: scale(1.08); box-shadow: var(--sombra-lg); }
+.whatsapp-flutuante svg { width: 30px; height: 30px; fill: #fff; }
+
+/* Popup rápido avisando que um item voltou pra loja — some sozinho em 5s ou no X. */
+.toast-oportunidade {
+    position: fixed;
+    top: 76px;
+    left: 16px;
+    right: 16px;
+    max-width: 340px;
+    margin-left: auto;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-dourado);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-lg);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 70;
+    animation: toast-entrar 0.25s ease;
+}
+
+@keyframes toast-entrar {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-oportunidade .toast-conteudo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-oportunidade .toast-foto {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--raio-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--cor-fundo-alt);
+}
+
+.toast-oportunidade .toast-texto { min-width: 0; display: block; }
+.toast-oportunidade .toast-texto strong { display: block; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-oportunidade .toast-texto span { display: block; font-size: 0.78rem; color: var(--cor-texto-suave); }
+
+.toast-fechar {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    min-height: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.toast-fechar:hover { background: transparent; box-shadow: none; transform: none; color: var(--cor-texto); }
+
+@media (min-width: 768px) {
+    .toast-oportunidade { left: auto; width: 340px; }
+}
+
+/* Botão de compartilhar — sempre verde do WhatsApp, não é um .btn do tema. */
+.btn-compartilhar-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: #25D366;
+    border: 1.5px solid #25D366;
+    padding: 10px 18px;
+    min-height: 44px;
+    border-radius: var(--raio-sm);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin: 4px 0 14px;
+    box-shadow: none;
+}
+
+.btn-compartilhar-whatsapp svg { width: 20px; height: 20px; fill: #25D366; flex-shrink: 0; }
+.btn-compartilhar-whatsapp:hover { background: rgba(37, 211, 102, 0.1); box-shadow: none; transform: none; }
+
+.btn-compartilhar-whatsapp.icone-so {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+}
+
+.btn-compartilhar-whatsapp.icone-so svg { width: 18px; height: 18px; }
+
+@media (min-width: 768px) {
+    .footer-contato-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ============ Ícones — mesmo tamanho e alinhamento em qualquer contexto ============ */
+
+.icon {
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.15em;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+/* ============ Layout de duas colunas (carrinho, checkout, débitos) ============ */
+/* No mobile tudo empilha; no desktop vira conteúdo + painel lateral fixo. */
+
+.layout-colunas { display: block; }
+
+.painel-lateral { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+.resumo-card {
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    padding: 22px;
+}
+
+.info-lista { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+.info-lista > div { font-size: 0.9rem; }
+.info-lista .rotulo {
+    display: block;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    margin-bottom: 2px;
+}
+
+/* ============ Layout do catálogo (categorias em coluna lateral no desktop) ============ */
+
+.categorias-lateral { display: none; }
+
+.categorias-lateral h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    margin-bottom: 10px;
+}
+
+.categorias-lateral nav { display: flex; flex-direction: column; gap: 2px; }
+
+.categorias-lateral nav a {
+    padding: 10px 12px;
+    border-radius: var(--raio-sm);
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-weight: 500;
+    font-size: 0.92rem;
+}
+
+.categorias-lateral nav a:hover { background: var(--cor-fundo-alt); }
+
+.categorias-lateral nav a.ativa {
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    font-weight: 700;
+}
+
+/* ============ Busca, resultado e paginação do catálogo ============ */
+
+.busca-catalogo {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.busca-catalogo input { flex: 1; margin-top: 0; }
+.busca-catalogo button { flex-shrink: 0; padding: 0 18px; }
+
+.resultado-busca { color: var(--cor-texto-suave); font-size: 0.9rem; margin-top: -6px; margin-bottom: 12px; }
+
+.disponibilidade.card { font-size: 0.72rem; margin: 4px 0 0; }
+
+.paginacao {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 32px;
+}
+
+.paginacao a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: var(--raio-sm);
+    border: 1px solid var(--cor-borda);
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.paginacao a.ativa { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
+.paginacao a:hover:not(.ativa) { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+
+/* ============ Layout do produto (galeria + informações lado a lado no desktop) ============ */
+
+.produto-layout { display: block; }
+
+@media (min-width: 768px) {
+    .container { padding: 0 24px 56px; }
+
+    .nav-toggle { display: none; }
+
+    .site-nav {
+        display: flex !important;
+        position: static;
+        flex-direction: row;
+        width: auto;
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        background: transparent;
+        gap: 4px 20px;
+        order: 0;
+    }
+
+    .site-nav a, .site-nav .site-nav-user { border-bottom: none; padding: 6px 4px; }
+
+    .product-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    .pedidos-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .pedido-card { grid-template-columns: 88px 1fr; padding: 18px; }
+    .pedido-card .foto { width: 88px; height: 88px; }
+}
+
+/* A partir daqui a página deixa de ser "mobile esticado": entram colunas
+   laterais e layouts lado a lado — o que muda de verdade entre celular e
+   computador não é só o tamanho da fonte, é a estrutura. */
+@media (min-width: 1024px) {
+    .container { max-width: 1280px; }
+    .site-header-inner { max-width: 1280px; }
+
+    .product-grid { grid-template-columns: repeat(4, 1fr); }
+
+    .pedidos-grid { grid-template-columns: repeat(3, 1fr); }
+
+    .catalogo-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 36px;
+        align-items: start;
+    }
+
+    .categorias-lateral { display: block; position: sticky; top: 96px; }
+
+    .categorias { display: none; }
+
+    .layout-colunas {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 36px;
+        align-items: start;
+    }
+
+    .painel-lateral { margin-top: 0; position: sticky; top: 96px; }
+
+    .produto-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 44px;
+        align-items: start;
+    }
+
+    .produto-layout .produto-carousel { position: sticky; top: 96px; margin-bottom: 0; }
+
+    .auth-card { margin-top: 48px; }
+}
+
+@media (min-width: 1440px) {
+    .product-grid { grid-template-columns: repeat(5, 1fr); }
+}
