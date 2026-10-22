@@ -15,30 +15,30 @@
 function montarEmailHtmlLoja(PDO $pdo, string $titulo, array $paragrafos, string $codigo): string
 {
     $configLoja = $pdo->query('SELECT nome_loja, logo_arquivo FROM config_loja WHERE id_config = 1')->fetch();
-    $nomeLoja = $configLoja['nome_loja'] ?? 'Loja';
+    $nomeLoja = $configLoja['nome_loja'] ?? 'Clube da Cerveja';
 
     $paragrafosHtml = '';
     foreach ($paragrafos as $paragrafo) {
         $paragrafosHtml .= '<p style="margin:0 0 14px; color:#444444; font-size:14px; line-height:1.55;">' . $paragrafo . '</p>';
     }
 
-    $cabecalhoLogo = !empty($configLoja['logo_arquivo'])
-        ? '<img src="' . htmlspecialchars(urlBaseAtual()) . '/' . htmlspecialchars($configLoja['logo_arquivo']) . '" alt="' . htmlspecialchars($nomeLoja) . '" style="max-height:48px; width:auto;">'
-        : '<span style="font-family:Georgia,serif; font-size:22px; font-weight:600; color:#222222;">' . htmlspecialchars($nomeLoja) . '</span>';
+    // Sem logo enviada em Aparência, cai na logo padrão do Clube da Cerveja.
+    require_once __DIR__ . '/marca.php';
+    $cabecalhoLogo = '<img src="' . htmlspecialchars(urlBaseAtual()) . '/' . htmlspecialchars(logoDaLoja($configLoja['logo_arquivo'] ?? null, true)) . '" alt="' . htmlspecialchars($nomeLoja) . '" style="max-height:96px; width:auto;">';
 
     return '
-    <div style="background:#f4f6f8; padding:32px 16px; font-family:Arial, Helvetica, sans-serif;">
+    <div style="background:#0E0E0E; padding:32px 16px; font-family:Arial, Helvetica, sans-serif;">
       <div style="max-width:460px; margin:0 auto;">
         <div style="text-align:center; padding-bottom:22px;">' . $cabecalhoLogo . '</div>
         <div style="background:#ffffff; border-radius:10px; padding:32px; box-shadow:0 2px 12px rgba(0,0,0,0.07);">
           <h2 style="margin:0 0 18px; font-size:19px; color:#222222;">' . htmlspecialchars($titulo) . '</h2>
           ' . $paragrafosHtml . '
           <div style="text-align:center; margin:28px 0 8px;">
-            <div style="display:inline-block; background:#f4f0fb; border:1.5px dashed #8B5CF6; border-radius:10px; padding:16px 26px; font-size:30px; font-weight:800; letter-spacing:8px; color:#8B5CF6;">' . htmlspecialchars($codigo) . '</div>
+            <div style="display:inline-block; background:#FDF3D0; border:1.5px dashed #C98A00; border-radius:10px; padding:16px 26px; font-size:30px; font-weight:800; letter-spacing:8px; color:#141414;">' . htmlspecialchars($codigo) . '</div>
           </div>
           <p style="font-size:12px; color:#999999; margin-top:24px; line-height:1.5; text-align:center;">Se você não pediu esse código, pode ignorar este e-mail.</p>
         </div>
-        <p style="text-align:center; color:#aaaaaa; font-size:12px; margin-top:24px;">' . htmlspecialchars($nomeLoja) . '</p>
+        <p style="text-align:center; color:#B8BCC2; font-size:12px; margin-top:24px;">' . htmlspecialchars($nomeLoja) . ' · ' . MARCA_SUBTITULO . '</p>
       </div>
     </div>';
 }
@@ -64,20 +64,20 @@ function montarEmailHtmlDev(PDO $pdo, string $titulo, array $paragrafos, ?string
     if ($botaoTexto && $botaoUrl) {
         $botaoHtml = '
           <div style="text-align:center; margin:28px 0 8px;">
-            <a href="' . htmlspecialchars($botaoUrl) . '" style="display:inline-block; background:#4F46E5; color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:14px 28px; border-radius:8px;">' . htmlspecialchars($botaoTexto) . '</a>
+            <a href="' . htmlspecialchars($botaoUrl) . '" style="display:inline-block; background:#F2B705; color:#141414; text-decoration:none; font-weight:700; font-size:15px; padding:14px 28px; border-radius:8px;">' . htmlspecialchars($botaoTexto) . '</a>
           </div>';
     }
 
     return '
-    <div style="background:#f4f6f8; padding:32px 16px; font-family:Arial, Helvetica, sans-serif;">
+    <div style="background:#0E0E0E; padding:32px 16px; font-family:Arial, Helvetica, sans-serif;">
       <div style="max-width:460px; margin:0 auto;">
-        <div style="text-align:center; padding-bottom:22px;"><span style="font-family:Georgia,serif; font-size:22px; font-weight:600; color:#222222;">' . htmlspecialchars($nomeSistema) . '</span></div>
+        <div style="text-align:center; padding-bottom:22px;"><span style="font-family:Impact,Arial Narrow,sans-serif; font-size:24px; letter-spacing:1px; text-transform:uppercase; color:#F2B705;">' . htmlspecialchars($nomeSistema) . '</span></div>
         <div style="background:#ffffff; border-radius:10px; padding:32px; box-shadow:0 2px 12px rgba(0,0,0,0.07);">
           <h2 style="margin:0 0 18px; font-size:19px; color:#222222;">' . htmlspecialchars($titulo) . '</h2>
           ' . $paragrafosHtml . $botaoHtml . '
           <p style="font-size:12px; color:#999999; margin-top:24px; line-height:1.5; text-align:center;">Painel do desenvolvedor — se você não reconhece essa atividade, sua conta continua protegida enquanto o e-mail/senha não forem comprometidos.</p>
         </div>
-        <p style="text-align:center; color:#aaaaaa; font-size:12px; margin-top:24px;">' . htmlspecialchars($nomeSistema) . '</p>
+        <p style="text-align:center; color:#B8BCC2; font-size:12px; margin-top:24px;">' . htmlspecialchars($nomeSistema) . '</p>
       </div>
     </div>';
 }

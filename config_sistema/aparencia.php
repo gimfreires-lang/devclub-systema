@@ -8,12 +8,12 @@ $erro = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome_loja = trim($_POST['nome_loja'] ?? '');
-    $tema = $_POST['tema'] ?? 'claro';
+    $tema = $_POST['tema'] ?? 'escuro';
     $temasValidos = ['claro', 'escuro', 'personalizado'];
-    $cor_primaria = trim($_POST['cor_primaria'] ?? '#8B5CF6');
-    $cor_secundaria = trim($_POST['cor_secundaria'] ?? '#F472B6');
-    $cor_fundo = trim($_POST['cor_fundo'] ?? '#FFFFFF');
-    $cor_texto = trim($_POST['cor_texto'] ?? '#1F2937');
+    $cor_primaria = trim($_POST['cor_primaria'] ?? '#F2B705');
+    $cor_secundaria = trim($_POST['cor_secundaria'] ?? '#B8BCC2');
+    $cor_fundo = trim($_POST['cor_fundo'] ?? '#0E0E0E');
+    $cor_texto = trim($_POST['cor_texto'] ?? '#F5F5F5');
 
     $whatsapp_loja = preg_replace('/\D/', '', $_POST['whatsapp_loja'] ?? '');
     if (in_array(strlen($whatsapp_loja), [10, 11], true)) {

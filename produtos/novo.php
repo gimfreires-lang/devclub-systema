@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = trim($_POST['nome'] ?? '');
     $descricao = trim($_POST['descricao'] ?? '') ?: null;
     $id_categoria = (int) ($_POST['id_categoria'] ?? 0);
-    $condicao = $_POST['condicao'] === 'novo' ? 'novo' : 'usado';
+    $condicao = ($_POST['condicao'] ?? 'novo') === 'usado' ? 'usado' : 'novo';
     $preco_base = converterMoedaBrParaFloat($_POST['preco_base'] ?? '0');
     // combinacoes[]: cada item é um JSON {"valores":[id_valor,...],"preco":x,"estoque":y}
     $combinacoesJson = $_POST['combinacoes'] ?? '[]';
@@ -119,12 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label>Condição
-                <select name="condicao">
-                    <option value="usado">Usado</option>
-                    <option value="novo">Novo</option>
-                </select>
-            </label>
+            <?php // Conveniência de bebidas: todo produto é novo, então o campo "Condição" não aparece. ?>
+            <input type="hidden" name="condicao" value="novo">
             <label>Preço base (R$)<input type="text" name="preco_base" class="js-mascara-moeda" placeholder="0,00" required></label>
             <?php superfreteCamposProduto($pdo, null, null); ?>
             <?php fiscalCamposProduto($pdo, null); ?>

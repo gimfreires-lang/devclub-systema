@@ -359,7 +359,7 @@ $vinculosAtuais = $pdo->query('SELECT numero_caixa, terminal_id FROM caixa_termi
             <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin-top:0; margin-bottom:16px;">Aparece no cabeçalho do admin e na tela de login.</p>
             <form method="post">
                 <input type="hidden" name="acao" value="atualizar_nome">
-                <label>Nome<input type="text" name="nome_sistema" value="<?= htmlspecialchars($config['nome_sistema'] ?? 'Sua Loja - CoderNex') ?>" required></label>
+                <label>Nome<input type="text" name="nome_sistema" value="<?= htmlspecialchars($config['nome_sistema'] ?? 'Clube da Cerveja') ?>" required></label>
                 <button type="submit" class="btn-bloco">Salvar nome</button>
             </form>
         </div>

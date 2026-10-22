@@ -10,9 +10,11 @@
 ?>
 <?php
 require_once __DIR__ . '/config_dev.php';
+require_once __DIR__ . '/marca.php';
 $versaoCssAdmin = @filemtime(__DIR__ . '/../assets/css/admin.css') ?: time();
 $versaoJsAdmin = @filemtime(__DIR__ . '/../assets/js/admin.js') ?: time();
 $nomeSistemaAtual = nomeDoSistema($pdo);
+$logoSistema = logoDaLoja((string) $pdo->query('SELECT logo_arquivo FROM config_loja WHERE id_config = 1')->fetchColumn(), true);
 require_once __DIR__ . '/whatsapp_conexao.php';
 $whatsappMenu = whatsappModuloDevAtivo($pdo);
 require_once __DIR__ . '/fiscal.php';
@@ -21,12 +23,13 @@ $superfreteMenu = in_array($pdo->query('SELECT superfrete_modo FROM config_dev W
 ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/assets/css/admin.css?v=<?= $versaoCssAdmin ?>">
+<link rel="icon" type="image/png" href="/<?= MARCA_FAVICON ?>">
 <?php require_once __DIR__ . '/pwa.php'; pwaTags($pdo, 'admin'); ?>
 <header class="site-header">
     <div class="site-header-inner">
-        <a href="/dashboard.php" class="site-logo"><?= htmlspecialchars($nomeSistemaAtual) ?></a>
+        <a href="/dashboard.php" class="site-logo"><img src="/<?= htmlspecialchars($logoSistema) ?>" alt="" onerror="this.remove()"><?= htmlspecialchars($nomeSistemaAtual) ?></a>
         <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Abrir menu">
             <span></span><span></span><span></span>
         </button>

@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $versaoCssAdmin = @filemtime(__DIR__ . '/assets/css/admin.css') ?: time();
 $nomeSistemaAtual = nomeDoSistema($pdo);
+require_once __DIR__ . '/includes/marca.php';
+$logoLogin = logoDaLoja((string) $pdo->query('SELECT logo_arquivo FROM config_loja WHERE id_config = 1')->fetchColumn());
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -36,13 +38,15 @@ $nomeSistemaAtual = nomeDoSistema($pdo);
     <title>Entrar — <?= htmlspecialchars($nomeSistemaAtual) ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="/assets/css/admin.css?v=<?= $versaoCssAdmin ?>">
+    <link rel="icon" type="image/png" href="/<?= MARCA_FAVICON ?>">
     <?php require_once __DIR__ . '/includes/pwa.php'; pwaTags($pdo, 'admin'); ?>
 </head>
-<body>
+<body class="tela-login">
 <main class="container">
     <div class="auth-card">
+        <img class="auth-logo" src="/<?= htmlspecialchars($logoLogin) ?>" alt="" onerror="this.remove()">
         <h1><?= htmlspecialchars($nomeSistemaAtual) ?></h1>
         <?php if ($erro): ?>
             <p class="alert alert-erro"><?= htmlspecialchars($erro) ?></p>

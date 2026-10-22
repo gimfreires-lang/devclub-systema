@@ -1,5 +1,18 @@
 # Sistema DevClub
 
+> **Clube da Cerveja** — esta instalação está com a identidade do Clube da Cerveja (conveniência de bebidas e tabacaria, com carnes assadas aos domingos): logo em `assets/img/marca/`, paleta preto, dourado e prata, tema escuro como padrão e banner "Domingo de churrasco" na loja. Para aplicar no banco, rode `sql/schema_clube_da_cerveja.sql` uma vez (e, se quiser produtos de exemplo, `sql/seed_clube_da_cerveja.sql`).
+
+### Publicar o Clube da Cerveja
+
+**Instalação nova (banco vazio):**
+1. Crie o banco e importe o **`SysVeronica.sql`** da pasta raiz (Parte 4). Ele já vem com todas as atualizações de `sql/` e com nome, tema e cores do Clube da Cerveja.
+2. Suba o código. O merge na `main` faz o deploy automático por FTP para **`/public_html/clubedacerveja/`**, uma pasta separada do brechó, que continua em `/public_html/brechodaveve/`. Na hospedagem, aponte o domínio (ou subdomínio) do Clube para essa pasta e ative o HTTPS. O `SysVeronica.sql` não vai no FTP: importe-o pelo phpMyAdmin.
+3. Abra `/painel_dev/login.php`, conecte o banco e configure Mercado Pago, e-mail e WhatsApp (Partes 10 a 12).
+4. Em **Configurações > Aparência**, preencha WhatsApp, endereço e horário (ex.: "Seg a sáb 9h às 22h · Domingo churrasco a partir das 11h").
+5. Opcional: importe `sql/seed_clube_da_cerveja.sql` para ter as categorias e os produtos de exemplo. Pelo menos a categoria **Carnes do Domingo** é recomendada, porque o botão "Ver carnes" do banner de domingo aponta para ela.
+
+**Banco que já está no ar:** não importe o `SysVeronica.sql`. Rode só `sql/schema_clube_da_cerveja.sql`, uma vez, depois do deploy.
+
 Sistema completo para uma loja física e online: **painel administrativo**, **PDV (caixa)**, **loja online** com pagamento, **linha de crédito** para clientes e integrações opcionais (WhatsApp, frete, nota fiscal). Feito em **PHP + MySQL**, sem framework, para ser fácil de ler, instalar e adaptar.
 
 > Material de apoio do **DevClub**. O nome do sistema, o nome da loja, a logo e as cores são configurados dentro do próprio sistema, então cada aluno entrega o seu com a identidade que quiser.

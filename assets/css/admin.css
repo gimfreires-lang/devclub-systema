@@ -5,16 +5,23 @@
    faz sentido mudar de cara toda vez que alguém troca a cor da vitrine. */
 
 :root {
-    --cor-primaria: #4F46E5;
-    --cor-secundaria: #6366F1;
+    /* Paleta do Clube da Cerveja (preto, dourado e prata da logo). No painel
+       o fundo é claro, então a cor de ação é o preto e o dourado entra como
+       destaque (realces, hover, faixa do cabeçalho) — texto dourado em
+       fundo branco ficaria ilegível. */
+    --cor-primaria: #141414;
+    --cor-secundaria: #F2B705;
+    --cor-dourado: #F2B705;
+    --cor-dourado-escuro: #C98A00;
+    --cor-prata: #B8BCC2;
     --cor-fundo: #FFFFFF;
-    --cor-texto: #1F2937;
+    --cor-texto: #1A1A1A;
 
     --cor-texto-suave: color-mix(in srgb, var(--cor-texto) 55%, var(--cor-fundo));
     --cor-borda: color-mix(in srgb, var(--cor-texto) 14%, var(--cor-fundo));
-    --cor-primaria-hover: color-mix(in srgb, var(--cor-primaria) 85%, black);
-    --cor-fundo-alt: color-mix(in srgb, var(--cor-primaria) 5%, var(--cor-fundo));
-    --cor-primaria-suave: color-mix(in srgb, var(--cor-primaria) 12%, var(--cor-fundo));
+    --cor-primaria-hover: color-mix(in srgb, var(--cor-primaria) 80%, var(--cor-dourado));
+    --cor-fundo-alt: color-mix(in srgb, var(--cor-dourado) 6%, var(--cor-fundo));
+    --cor-primaria-suave: color-mix(in srgb, var(--cor-dourado) 22%, var(--cor-fundo));
 
     --cor-erro: #DC2626;
     --cor-erro-fundo: #FEE2E2;
@@ -27,7 +34,7 @@
     --cor-enviado: #0D9488;
     --cor-enviado-fundo: #CCFBF1;
 
-    --fonte-titulo: 'Fraunces', Georgia, serif;
+    --fonte-titulo: 'Oswald', 'Arial Narrow', Impact, sans-serif;
     --fonte-corpo: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 
     --raio-sm: 8px;
@@ -52,7 +59,7 @@ body {
 
 img { max-width: 100%; height: auto; }
 
-a { color: var(--cor-primaria); }
+a { color: #8A5D00; }
 
 h1, h2, h3 { font-family: var(--fonte-titulo); font-weight: 600; line-height: 1.25; margin: 0 0 14px; }
 h1 { font-size: 1.7rem; }
@@ -69,7 +76,7 @@ h3 { font-size: 1.05rem; }
 
 .site-header {
     background: var(--cor-fundo);
-    border-bottom: 1px solid var(--cor-borda);
+    border-bottom: 3px solid var(--cor-dourado);
     padding: 14px 16px;
     margin-bottom: 26px;
 }
@@ -86,13 +93,24 @@ h3 { font-size: 1.05rem; }
 }
 
 .site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     text-decoration: none;
     color: var(--cor-texto);
     font-family: var(--fonte-titulo);
     font-weight: 600;
     font-size: 1.15rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     white-space: nowrap;
 }
+.site-logo img { height: 42px; width: auto; }
+
+/* Tela de login do painel: fundo preto com a logo, igual a identidade. */
+body.tela-login { background: #0E0E0E; }
+.tela-login .auth-card { border-top: 4px solid var(--cor-dourado); }
+.auth-logo { display: block; width: 150px; height: auto; margin: 0 auto 14px; }
 
 /* Botão hambúrguer — só existe visualmente no mobile (ver media query) */
 .nav-toggle {
@@ -189,7 +207,7 @@ h3 { font-size: 1.05rem; }
 .page-title { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
 .page-title .icone-titulo {
     width: 42px; height: 42px; border-radius: var(--raio-sm);
-    background: var(--cor-primaria-suave); color: var(--cor-primaria);
+    background: var(--cor-primaria); color: var(--cor-dourado);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .page-title .icone-titulo svg { width: 22px; height: 22px; }

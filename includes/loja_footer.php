@@ -8,8 +8,9 @@
  */
 require_once __DIR__ . '/loja.php';
 require_once __DIR__ . '/config_dev.php';
+require_once __DIR__ . '/marca.php';
 
-$configContato = $pdo->query('SELECT nome_loja, whatsapp_loja, endereco_loja, horario_atendimento, email_loja FROM config_loja WHERE id_config = 1')->fetch();
+$configContato = $pdo->query('SELECT nome_loja, logo_arquivo, whatsapp_loja, endereco_loja, horario_atendimento, email_loja FROM config_loja WHERE id_config = 1')->fetch();
 $temContato = $configContato['whatsapp_loja'] || $configContato['endereco_loja'] || $configContato['horario_atendimento'] || $configContato['email_loja'];
 $creditoRodape = creditoRodape($pdo);
 ?>
@@ -34,7 +35,12 @@ $creditoRodape = creditoRodape($pdo);
     <?php endif; ?>
     <div class="footer-final">
         <div class="container footer-final-inner">
-            <span class="footer-logo"><?= htmlspecialchars($configContato['nome_loja']) ?></span>
+            <span class="footer-logo">
+                <img src="/<?= htmlspecialchars(logoDaLoja($configContato['logo_arquivo'] ?? null, true)) ?>" alt="" onerror="this.remove()">
+                <?= htmlspecialchars($configContato['nome_loja']) ?>
+            </span>
+            <span>Bebidas geladas, tabacaria e carne assada todo domingo.</span>
+            <span class="footer-aviso-idade">Venda de bebidas alcoólicas e produtos de tabacaria proibida para menores de 18 anos. Se beber, não dirija.</span>
             <span>© <?= date('Y') ?> <?= htmlspecialchars($configContato['nome_loja']) ?>. Todos os direitos reservados.</span>
             <span>Desenvolvido por <a href="<?= htmlspecialchars($creditoRodape['link']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($creditoRodape['nome']) ?></a></span>
         </div>

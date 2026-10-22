@@ -24,11 +24,13 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: ./
-          server-dir: /public_html/brechodaveve/
+          # Pasta própria do Clube da Cerveja (o brechó continua em /public_html/brechodaveve/).
+          server-dir: /public_html/clubedacerveja/
           exclude: |
             **/.git*
             **/.git*/**
             sql/**
+            SysVeronica.sql
             docs/**
             .claude/**
             .superpowers/**

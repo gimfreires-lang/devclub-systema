@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/config_dev.php';
 require_once __DIR__ . '/includes/pwa.php';
 
 $app = ($_GET['app'] ?? '') === 'admin' ? 'admin' : 'loja';
-$nomeLoja = (string) $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Loja';
+$nomeLoja = (string) $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Clube da Cerveja';
 [$tema, $fundo] = pwaCores($pdo, $app);
 $versao = (pwaLogo($pdo)['mtime'] ?? 0) . '-' . (int) @filemtime(__FILE__);
 $icone = fn(int $tam) => '/icone_pwa.php?app=' . $app . '&tam=' . $tam . '&v=' . $versao;
@@ -16,7 +16,7 @@ header('Cache-Control: public, max-age=3600');
 echo json_encode([
     'name' => $nome,
     'short_name' => mb_substr($nome, 0, 12),
-    'description' => $app === 'admin' ? 'Gestão da loja: pedidos, produtos, clientes e caixa.' : 'Compre online na ' . $nomeLoja . '.',
+    'description' => $app === 'admin' ? 'Gestão da loja: pedidos, produtos, clientes e caixa.' : 'Bebidas geladas, tabacaria e churrasco de domingo — ' . $nomeLoja . '.',
     'id' => $app === 'admin' ? '/dashboard.php' : '/loja/index.php',
     'start_url' => $app === 'admin' ? '/dashboard.php' : '/loja/index.php',
     'scope' => $app === 'admin' ? '/' : '/loja/',
