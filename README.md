@@ -6,7 +6,7 @@
 
 **Instalação nova (banco vazio):**
 1. Crie o banco e importe o **`SysVeronica.sql`** da pasta raiz (Parte 4). Ele já vem com todas as atualizações de `sql/` e com nome, tema e cores do Clube da Cerveja.
-2. Suba o código (merge na `main` faz o deploy automático por FTP, ou pelo Easypanel).
+2. Suba o código. O merge na `main` faz o deploy automático por FTP para **`/public_html/clubedacerveja/`**, uma pasta separada do brechó, que continua em `/public_html/brechodaveve/`. Na hospedagem, aponte o domínio (ou subdomínio) do Clube para essa pasta e ative o HTTPS. O `SysVeronica.sql` não vai no FTP: importe-o pelo phpMyAdmin.
 3. Abra `/painel_dev/login.php`, conecte o banco e configure Mercado Pago, e-mail e WhatsApp (Partes 10 a 12).
 4. Em **Configurações > Aparência**, preencha WhatsApp, endereço e horário (ex.: "Seg a sáb 9h às 22h · Domingo churrasco a partir das 11h").
 5. Opcional: importe `sql/seed_clube_da_cerveja.sql` para ter as categorias e os produtos de exemplo. Pelo menos a categoria **Carnes do Domingo** é recomendada, porque o botão "Ver carnes" do banner de domingo aponta para ela.
