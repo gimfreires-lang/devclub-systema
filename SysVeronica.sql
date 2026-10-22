@@ -503,6 +503,11 @@ CREATE TABLE `usuarios` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+-- Usuário do lojista (perfil Admin). A senha é aleatória de propósito:
+-- defina a senha real em painel_dev > Usuários da loja > Resetar senha
+-- (README, Parte 11).
+INSERT INTO `usuarios` (`id_usuario`, `nome`, `email`, `senha_hash`, `perfil`, `ativo`) VALUES (1,'Clube da Cerveja','sistema@gmail.com','$2y$10$FQzjKuBTO4LWpZxhMF23juu3TBzdolmRH0Rm.Se4Svj8TxkFVGksC','Admin',1);
+
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 DROP TABLE IF EXISTS `variacao_valores`;

@@ -11,9 +11,11 @@ const MARCA_NOME = 'Clube da Cerveja';
 const MARCA_SUBTITULO = 'Conveniência e Tabacaria';
 
 // Logo em tamanho cheio (ícone do app, e-mails) e reduzida (cabeçalhos).
-const MARCA_LOGO = 'assets/img/marca/clube-da-cerveja.png';
-const MARCA_LOGO_PEQUENA = 'assets/img/marca/clube-da-cerveja-160.png';
-const MARCA_FAVICON = 'assets/img/marca/favicon.png';
+// Ficam fora de assets/img de propósito: no Easypanel essa pasta vira um
+// volume (README, Parte 9) que começa vazio e esconderia estes arquivos.
+const MARCA_LOGO = 'assets/marca/clube-da-cerveja.png';
+const MARCA_LOGO_PEQUENA = 'assets/marca/clube-da-cerveja-160.png';
+const MARCA_FAVICON = 'assets/marca/favicon.png';
 
 /**
  * Caminho (relativo à raiz do site, sem barra inicial) da logo a exibir:

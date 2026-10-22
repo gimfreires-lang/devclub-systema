@@ -18,7 +18,7 @@ ALTER TABLE config_dev
 
 -- 2) Aplica a marca nesta instalação. logo_arquivo vai pra NULL de propósito:
 --    sem logo enviada, o sistema usa a logo padrão do Clube da Cerveja
---    (assets/img/marca/). Pra usar outra, é só enviar em Aparência depois.
+--    (assets/marca/). Pra usar outra, é só enviar em Aparência depois.
 UPDATE config_loja
 SET nome_loja = 'Clube da Cerveja',
     tema = 'escuro',
