@@ -8,7 +8,7 @@
 function nomeDoSistema(PDO $pdo): string
 {
     $nome = $pdo->query('SELECT nome_sistema FROM config_dev WHERE id_config = 1')->fetchColumn();
-    return ($nome !== false && $nome !== null && $nome !== '') ? $nome : 'Sua Loja - CoderNex';
+    return ($nome !== false && $nome !== null && $nome !== '') ? $nome : 'Clube da Cerveja';
 }
 
 /**

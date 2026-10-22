@@ -1,5 +1,7 @@
 # Sistema DevClub
 
+> **Clube da Cerveja** — esta instalação está com a identidade do Clube da Cerveja (conveniência de bebidas e tabacaria, com carnes assadas aos domingos): logo em `assets/img/marca/`, paleta preto, dourado e prata, tema escuro como padrão e banner "Domingo de churrasco" na loja. Para aplicar no banco, rode `sql/schema_clube_da_cerveja.sql` uma vez (e, se quiser produtos de exemplo, `sql/seed_clube_da_cerveja.sql`).
+
 Sistema completo para uma loja física e online: **painel administrativo**, **PDV (caixa)**, **loja online** com pagamento, **linha de crédito** para clientes e integrações opcionais (WhatsApp, frete, nota fiscal). Feito em **PHP + MySQL**, sem framework, para ser fácil de ler, instalar e adaptar.
 
 > Material de apoio do **DevClub**. O nome do sistema, o nome da loja, a logo e as cores são configurados dentro do próprio sistema, então cada aluno entrega o seu com a identidade que quiser.

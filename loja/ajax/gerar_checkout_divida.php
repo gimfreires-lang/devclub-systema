@@ -47,7 +47,7 @@ $id_movimento = (int) $pdo->lastInsertId();
 
 $application_fee = ceil($valor * (mpTaxaMarketplace($pdo) / 100) * 100) / 100;
 
-$nomeLojaMp = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Sua Loja';
+$nomeLojaMp = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Clube da Cerveja';
 
 $preference = [
     'items' => [[

@@ -19,17 +19,21 @@ if (!function_exists('imagecreatetruecolor')) {
 $img = imagecreatetruecolor($tam, $tam);
 imagefill($img, 0, 0, imagecolorallocate($img, $fr, $fg, $fb));
 
-// Logo num quadrado branco no meio (a "zona segura" de ícone mascarável é ~62%).
+// Logo no meio, dentro da "zona segura" de ícone mascarável (~62%). A logo
+// do Clube da Cerveja tem fundo transparente e contorno branco, então vai
+// direto sobre a cor do tema (preto); só o fallback sem logo usa o quadrado branco.
 $logo = pwaLogo($pdo);
 $origem = $logo ? @imagecreatefromstring((string) file_get_contents($logo['caminho'])) : false;
 $lado = (int) round($tam * 0.62);
 $x = (int) (($tam - $lado) / 2);
-imagefilledrectangle($img, $x, $x, $x + $lado, $x + $lado, imagecolorallocate($img, 255, 255, 255));
+if ($origem === false) {
+    imagefilledrectangle($img, $x, $x, $x + $lado, $x + $lado, imagecolorallocate($img, 255, 255, 255));
+}
 
 if ($origem !== false) {
     $ow = imagesx($origem);
     $oh = imagesy($origem);
-    $esc = min(($lado * 0.88) / $ow, ($lado * 0.88) / $oh);
+    $esc = min($lado / $ow, $lado / $oh);
     $nw = (int) round($ow * $esc);
     $nh = (int) round($oh * $esc);
     imagealphablending($img, true);

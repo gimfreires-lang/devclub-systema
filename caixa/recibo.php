@@ -46,28 +46,28 @@ $imprimirAuto = isset($_GET['print']) && $_GET['print'] === '1';
 <title>Comprovante #<?= $id_venda ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap">
 <style>
-    :root { --cor-primaria: #4F46E5; --cor-texto: #1F2937; --cor-texto-suave: #6b7280; --cor-borda: #e5e7eb; }
+    :root { --cor-primaria: #F2B705; --cor-preto: #0E0E0E; --cor-texto: #1F2937; --cor-texto-suave: #6b7280; --cor-borda: #e5e7eb; }
     * { box-sizing: border-box; }
     body {
-        margin: 0; padding: 24px 14px; background: #eef0fb;
+        margin: 0; padding: 24px 14px; background: #F4F1E8;
         font-family: 'Manrope', -apple-system, sans-serif; color: var(--cor-texto);
     }
     .recibo { max-width: 400px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(30,41,59,0.14); overflow: hidden; }
-    .recibo-cabecalho { background: var(--cor-primaria); color: #fff; padding: 22px 20px; text-align: center; }
-    .recibo-cabecalho strong { font-family: 'Fraunces', Georgia, serif; font-size: 1.2rem; display: block; margin-bottom: 4px; }
+    .recibo-cabecalho { background: var(--cor-preto); color: var(--cor-primaria); border-bottom: 3px solid var(--cor-primaria); padding: 22px 20px; text-align: center; }
+    .recibo-cabecalho strong { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 1.2rem; display: block; margin-bottom: 4px; }
     .recibo-cabecalho span { font-size: 0.82rem; opacity: 0.9; display: block; }
     .recibo-corpo { padding: 20px; }
     .recibo-meta { font-size: 0.85rem; color: var(--cor-texto-suave); margin-bottom: 16px; }
     .linha-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--cor-borda); font-size: 0.9rem; }
     .linha-item small { display: block; color: var(--cor-texto-suave); font-size: 0.78rem; margin-top: 2px; }
-    .recibo-total { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.25rem; padding-top: 14px; margin-top: 6px; border-top: 2px solid var(--cor-texto); font-family: 'Fraunces', Georgia, serif; }
+    .recibo-total { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.25rem; padding-top: 14px; margin-top: 6px; border-top: 2px solid var(--cor-texto); font-family: 'Oswald', 'Arial Narrow', sans-serif; }
     .recibo-corpo h4 { margin: 20px 0 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cor-texto-suave); }
     .recibo-rodape { text-align: center; padding: 18px; color: var(--cor-texto-suave); font-size: 0.85rem; border-top: 1px solid var(--cor-borda); }
     .btn-imprimir {
         display: block; width: 100%; margin-top: 22px; padding: 12px; border: none; border-radius: 10px;
-        background: var(--cor-primaria); color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+        background: var(--cor-primaria); color: #141414; font-weight: 700; font-size: 0.95rem; cursor: pointer;
     }
     @media print {
         body { background: #fff; padding: 0; }
@@ -83,7 +83,7 @@ $imprimirAuto = isset($_GET['print']) && $_GET['print'] === '1';
 <body>
     <div class="recibo">
         <div class="recibo-cabecalho">
-            <strong><?= htmlspecialchars($configLoja['nome_loja'] ?? 'Sua Loja') ?></strong>
+            <strong><?= htmlspecialchars($configLoja['nome_loja'] ?? 'Clube da Cerveja') ?></strong>
             <?php if (!empty($configLoja['endereco_loja'])): ?><span><?= htmlspecialchars($configLoja['endereco_loja']) ?></span><?php endif; ?>
         </div>
         <div class="recibo-corpo">

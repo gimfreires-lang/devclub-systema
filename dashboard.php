@@ -161,8 +161,10 @@ $valoresFormas = array_map('floatval', array_column($formasPagamento, 'total'));
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const corPrimaria = '#4F46E5';
-    const paletaFormas = ['#4F46E5', '#16A34A', '#DC2626', '#F59E0B', '#0EA5E9', '#9333EA'];
+    // Cores do Clube da Cerveja: dourado nas barras; no gráfico de formas de
+    // pagamento, dourado, preto e prata primeiro, depois tons de apoio.
+    const corPrimaria = '#F2B705';
+    const paletaFormas = ['#F2B705', '#1A1A1A', '#B8BCC2', '#C98A00', '#6B6B6B', '#FFE08A'];
 
     new Chart(document.getElementById('grafico-vendas-dias'), {
         type: 'bar',

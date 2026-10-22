@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/loja.php';
+require_once __DIR__ . '/../includes/marca.php';
 
 liberarReservasExpiradas($pdo);
 
@@ -9,6 +10,17 @@ $id_categoria = (int) ($_GET['categoria'] ?? 0);
 $busca = trim($_GET['busca'] ?? '');
 
 $categorias = $pdo->query('SELECT id_categoria, nome FROM categorias ORDER BY nome')->fetchAll();
+
+// Categoria das carnes assadas de domingo (se existir) — o banner do
+// churrasco linka direto pra ela.
+$idCategoriaChurrasco = 0;
+foreach ($categorias as $c) {
+    if (mb_strtolower($c['nome']) === 'carnes do domingo') {
+        $idCategoriaChurrasco = (int) $c['id_categoria'];
+        break;
+    }
+}
+$domingoDeChurrasco = hojeEDomingoDeChurrasco();
 
 const PRODUTOS_POR_PAGINA = 12;
 $pagina = max(1, (int) ($_GET['pagina'] ?? 1));
@@ -120,12 +132,24 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Loja</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= MARCA_NOME ?> — Bebidas geladas e churrasco de domingo</title></head>
 <body>
 <?php require __DIR__ . '/../includes/loja_header.php'; ?>
     <div class="banner-hero">
-        <h1>Catálogo</h1>
-        <p>Peças selecionadas com carinho — cada compra dá uma segunda vida a algo especial.</p>
+        <span class="banner-subtitulo"><?= MARCA_SUBTITULO ?></span>
+        <h1>Bebidas geladas e muito mais</h1>
+        <p>Cerveja trincando, destilados, gelo, carvão e tabacaria — e aos domingos tem carne assada na brasa.</p>
+    </div>
+
+    <div class="banner-churrasco<?= $domingoDeChurrasco ? ' hoje' : '' ?>">
+        <svg class="icone-churrasco" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 2c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8C4.6 6.5 5.5 5.3 6.2 4.5c.6-.7.9-1.1.6-1.8L8.5 2Zm4 0c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8c-1-1.8-.1-3 .6-3.8.6-.7.9-1.1.6-1.8L12.5 2Zm4 0c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8c-1-1.8-.1-3 .6-3.8.6-.7.9-1.1.6-1.8L16.5 2ZM2 10h20a8 8 0 0 1-5.2 7.5L18.5 22h-2.1l-1.5-4c-.9.2-1.9.3-2.9.3s-2-.1-2.9-.3l-1.5 4H5.5l1.7-4.5A8 8 0 0 1 2 10Z"/></svg>
+        <div>
+            <strong><?= $domingoDeChurrasco ? 'Hoje é domingo de churrasco!' : 'Domingo é dia de churrasco' ?></strong>
+            <p><?= $domingoDeChurrasco ? 'Carnes assadas na hora, saindo da brasa. Garanta a sua antes que acabe.' : 'Todo domingo tem carne assada no Clube. Encomende a sua com antecedência.' ?></p>
+        </div>
+        <?php if ($idCategoriaChurrasco > 0): ?>
+            <a class="btn" href="/loja/index.php?categoria=<?= $idCategoriaChurrasco ?>">Ver carnes</a>
+        <?php endif; ?>
     </div>
 
     <div id="banner-oportunidade">
@@ -171,7 +195,7 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
 
             <p class="alert alert-info" id="aviso-reservado"<?= $temReservadoNaPagina ? '' : ' hidden' ?>>Itens com a tag "Em um carrinho" estão reservados no carrinho de outro cliente, mas ainda não foram pagos — podem voltar a ficar disponíveis a qualquer momento.</p>
 
-            <p class="alert alert-oportunidade" id="aviso-voltou-geral"<?= $temVoltouNaPagina ? '' : ' hidden' ?>><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z"/></svg> Peça(s) que estavam no carrinho de outro cliente voltaram pra loja — aproveite antes que sumam de novo!</p>
+            <p class="alert alert-oportunidade" id="aviso-voltou-geral"<?= $temVoltouNaPagina ? '' : ' hidden' ?>><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z"/></svg> Itens que estavam no carrinho de outro cliente voltaram pra loja — aproveite antes que sumam de novo!</p>
 
             <div class="product-grid" id="grade-produtos">
                 <?php foreach ($produtos as $p): ?>

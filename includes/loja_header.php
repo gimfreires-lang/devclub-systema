@@ -8,8 +8,10 @@
  * </body>.
  */
 require_once __DIR__ . '/tema.php';
+require_once __DIR__ . '/marca.php';
 
 $configLoja = $pdo->query('SELECT nome_loja, logo_arquivo FROM config_loja WHERE id_config = 1')->fetch();
+$logoCabecalho = logoDaLoja($configLoja['logo_arquivo'] ?? null, true);
 ?>
 <?php
 // Cache-busting: a versão na URL é o horário de modificação do próprio arquivo,
@@ -21,17 +23,19 @@ $versaoJs = @filemtime(__DIR__ . '/../assets/js/loja.js') ?: time();
 ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/assets/css/loja.css?v=<?= $versaoCss ?>">
+<link rel="icon" type="image/png" href="/<?= MARCA_FAVICON ?>">
 <?php imprimirVariaveisTema($pdo); ?>
 <?php require_once __DIR__ . '/pwa.php'; pwaTags($pdo, 'loja'); ?>
 <header class="site-header">
     <div class="site-header-inner">
         <a href="/loja/index.php" class="site-logo">
-            <?php if (!empty($configLoja['logo_arquivo'])): ?>
-                <img src="/<?= htmlspecialchars($configLoja['logo_arquivo']) ?>" alt="<?= htmlspecialchars($configLoja['nome_loja']) ?>" onerror="this.remove()">
-            <?php endif; ?>
-            <?= htmlspecialchars($configLoja['nome_loja']) ?>
+            <img src="/<?= htmlspecialchars($logoCabecalho) ?>" alt="<?= htmlspecialchars($configLoja['nome_loja']) ?>" onerror="this.remove()">
+            <span class="site-logo-texto">
+                <?= htmlspecialchars($configLoja['nome_loja']) ?>
+                <small><?= MARCA_SUBTITULO ?></small>
+            </span>
         </a>
         <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Abrir menu">
             <span></span><span></span><span></span>

@@ -18,8 +18,10 @@
 
     /* Dourado é um acento fixo de "oportunidade" — não faz parte do tema do
        lojista, é sempre a mesma cor pra sinalizar "isso acabou de voltar". */
-    --cor-dourado: #C9971F;
-    --cor-dourado-suave: #FBF1DA;
+    --cor-dourado: #F2B705;
+    --cor-dourado-suave: #FDF3D0;
+    --cor-prata: #B8BCC2;
+    --cor-preto: #0E0E0E;
 
     /* Cores fixas das etapas de status de pedido — cada etapa precisa ser
        reconhecível de relance, então não seguem o tema do lojista, igual
@@ -31,7 +33,7 @@
     --cor-enviado: #0D9488;
     --cor-enviado-fundo: #CCFBF1;
 
-    --fonte-titulo: 'Fraunces', Georgia, serif;
+    --fonte-titulo: 'Oswald', 'Arial Narrow', Impact, sans-serif;
     --fonte-corpo: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 
     --raio-sm: 10px;
@@ -73,16 +75,59 @@ p { margin: 0 0 12px; }
 /* ============ Títulos de página ============ */
 
 .banner-hero {
-    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
+    background:
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--cor-dourado) 28%, transparent), transparent 60%),
+        var(--cor-preto);
     color: #fff;
+    border: 2px solid var(--cor-dourado);
+    box-shadow: inset 0 0 0 4px var(--cor-preto), inset 0 0 0 5px var(--cor-prata);
     border-radius: var(--raio-lg);
     padding: 34px 24px;
     margin-bottom: 20px;
     text-align: center;
 }
 
-.banner-hero h1 { color: #fff; margin-bottom: 6px; }
-.banner-hero p { color: rgba(255, 255, 255, 0.92); margin: 0; }
+.banner-hero h1 { color: var(--cor-dourado); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.02em; }
+.banner-hero p { color: rgba(255, 255, 255, 0.88); margin: 0; }
+.banner-hero .banner-logo { display: block; width: 120px; height: auto; margin: 0 auto 14px; }
+.banner-hero .banner-subtitulo {
+    display: inline-block;
+    color: var(--cor-prata);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+/* Domingo é dia de carne assada no Clube: faixa fixa no topo do catálogo,
+   que ganha destaque (borda dourada pulsando) quando hoje é domingo. */
+.banner-churrasco {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--cor-preto);
+    color: #fff;
+    border: 1px solid color-mix(in srgb, var(--cor-dourado) 45%, transparent);
+    border-radius: var(--raio-md);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+.banner-churrasco .icone-churrasco { flex: 0 0 auto; width: 40px; height: 40px; fill: var(--cor-dourado); }
+.banner-churrasco strong { display: block; color: var(--cor-dourado); font-family: var(--fonte-titulo); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.02em; }
+.banner-churrasco p { margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 0.9rem; }
+.banner-churrasco .btn { margin-left: auto; flex: 0 0 auto; background: var(--cor-dourado); color: #141414; }
+.banner-churrasco .btn:hover { background: color-mix(in srgb, var(--cor-dourado) 85%, black); }
+.banner-churrasco.hoje { border: 2px solid var(--cor-dourado); animation: churrasco-pulsa 2.4s ease-in-out infinite; }
+@keyframes churrasco-pulsa {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cor-dourado) 45%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cor-dourado) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .banner-churrasco.hoje { animation: none; } }
+@media (max-width: 600px) {
+    .banner-churrasco { flex-wrap: wrap; }
+    .banner-churrasco .btn { margin-left: 0; width: 100%; }
+}
 
 .page-title {
     display: flex;
@@ -148,7 +193,9 @@ p { margin: 0 0 12px; }
     font-size: 1.2rem;
 }
 
-.site-logo img { max-height: 38px; width: auto; border-radius: 6px; }
+.site-logo img { max-height: 48px; width: auto; }
+.site-logo-texto { display: flex; flex-direction: column; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.02em; }
+.site-logo-texto small { font-family: var(--fonte-corpo); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; color: var(--cor-primaria); }
 
 /* Botão hambúrguer — só existe visualmente no mobile (ver media query) */
 .nav-toggle {
@@ -254,7 +301,7 @@ button, input[type="submit"], .btn {
     border: none;
     border-radius: var(--raio-sm);
     background: var(--cor-primaria);
-    color: #fff;
+    color: var(--cor-sobre-primaria, #fff);
     font-family: var(--fonte-corpo);
     font-weight: 600;
     font-size: 0.98rem;
@@ -281,7 +328,7 @@ button:disabled, input[type="submit"]:disabled, .btn[disabled] {
     transform: none;
 }
 
-.btn-secundario { background: var(--cor-secundaria); }
+.btn-secundario { background: var(--cor-secundaria); color: var(--cor-sobre-secundaria, #fff); }
 .btn-secundario:hover { background: var(--cor-secundaria-hover); }
 
 .btn-outline {
@@ -425,7 +472,7 @@ input.senha-valida:focus {
 .categoria-pill.ativa {
     background: var(--cor-primaria);
     border-color: var(--cor-primaria);
-    color: #fff;
+    color: var(--cor-sobre-primaria, #fff);
 }
 
 /* ============ Carrossel (cartão do catálogo e página de produto) ============ */
@@ -487,7 +534,7 @@ input.senha-valida:focus {
     min-height: 0;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.92);
-    color: var(--cor-texto);
+    color: #141414;
     box-shadow: var(--sombra-md);
     font-size: 1.2rem;
     line-height: 1;
@@ -579,7 +626,7 @@ input.senha-valida:focus {
     left: 8px;
     z-index: 2;
     background: var(--cor-dourado);
-    color: #fff;
+    color: #141414;
     font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -880,8 +927,9 @@ input.senha-valida:focus {
 /* ============ Meus débitos ============ */
 
 .saldo-hero {
-    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
+    background: linear-gradient(135deg, var(--cor-preto), color-mix(in srgb, var(--cor-preto) 80%, var(--cor-dourado)));
     color: #fff;
+    border: 1px solid var(--cor-dourado);
     border-radius: var(--raio-lg);
     padding: 26px 22px;
     box-shadow: var(--sombra-md);
@@ -969,8 +1017,9 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
 }
 
 .footer-final {
-    background: #17130F;
-    color: #C9C2B6;
+    background: var(--cor-preto);
+    color: var(--cor-prata);
+    border-top: 3px solid var(--cor-dourado);
     padding: 26px 16px;
 }
 
@@ -986,11 +1035,19 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
 }
 
 .footer-final .footer-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     font-family: var(--fonte-titulo);
     font-size: 1.15rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--cor-dourado);
+    text-transform: uppercase;
 }
+
+.footer-final .footer-logo img { width: 64px; height: auto; }
+.footer-final .footer-aviso-idade { font-size: 0.75rem; opacity: 0.8; }
 
 .footer-final a { color: #fff; text-decoration: underline; }
 
@@ -1226,7 +1283,7 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
     font-size: 0.9rem;
 }
 
-.paginacao a.ativa { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
+.paginacao a.ativa { background: var(--cor-primaria); border-color: var(--cor-primaria); color: var(--cor-sobre-primaria, #fff); }
 .paginacao a:hover:not(.ativa) { border-color: var(--cor-primaria); color: var(--cor-primaria); }
 
 /* ============ Layout do produto (galeria + informações lado a lado no desktop) ============ */
