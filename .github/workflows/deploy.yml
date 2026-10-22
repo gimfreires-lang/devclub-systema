@@ -1,8 +1,9 @@
 name: Deploy via FTP
 
+# O Clube da Cerveja roda na VPS da Hostinger com Easypanel, que atualiza
+# sozinho pelo webhook do GitHub (README, Parte 8). Este envio por FTP é só
+# para hospedagem comum, então fica manual: Actions > Deploy via FTP > Run workflow.
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 jobs:
