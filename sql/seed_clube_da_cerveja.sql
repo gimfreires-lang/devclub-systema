@@ -28,7 +28,7 @@ INSERT INTO produtos (id_produto, nome, descricao, id_categoria, condicao, preco
 (9113, 'Carvão Vegetal 4kg', 'Saco de carvão vegetal de 4kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 24.90, 1),
 (9114, 'Seda e Isqueiro (kit)', 'Kit com seda e isqueiro. Venda proibida para menores de 18 anos.', (SELECT id_categoria FROM categorias WHERE nome = 'Tabacaria'), 'novo', 12.90, 1),
 (9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1),
-(9116, 'Picanha Assada (kg)', 'Picanha assada na brasa, servida aos domingos. Encomende com antecedência.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 129.90, 1),
+(9116, 'Costela Minga (kg)', 'Costela minga assada na brasa, servida aos domingos. Encomende com antecedência.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 129.90, 1),
 (9117, 'Costela Assada (kg)', 'Costela bovina assada lentamente na brasa. Só aos domingos.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 79.90, 1),
 (9118, 'Kit Domingo (1kg de carne + fardo de cerveja)', 'Combo de domingo: 1kg de carne assada + 12 latas de cerveja gelada.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 159.90, 1);
 
