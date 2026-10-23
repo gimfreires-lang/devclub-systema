@@ -11,8 +11,10 @@ $stmt->execute([':id' => $id_foto, ':ip' => $id_produto]);
 $foto = $stmt->fetch();
 
 if ($foto) {
+    // Só apaga do disco o que foi enviado pelo painel: as fotos que vêm com o
+    // código (assets/carnes/) voltariam no próximo deploy de qualquer jeito.
     $caminhoAbsoluto = __DIR__ . '/../../' . $foto['caminho_arquivo'];
-    if (is_file($caminhoAbsoluto)) {
+    if (str_starts_with($foto['caminho_arquivo'], 'assets/img/produtos/') && is_file($caminhoAbsoluto)) {
         unlink($caminhoAbsoluto);
     }
     $pdo->prepare('DELETE FROM produto_fotos WHERE id_foto = :id')->execute([':id' => $id_foto]);

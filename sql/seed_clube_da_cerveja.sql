@@ -2,9 +2,10 @@
 -- cara de conveniência. NÃO é migração de schema — é dado de teste e, como o
 -- resto de sql/**, não entra no deploy: rode manualmente se quiser.
 --
--- IDs 9101-9118 (faixa alta pra não colidir com produtos reais). Os produtos
+-- IDs 9101-9115 (faixa alta pra não colidir com produtos reais). Os produtos
 -- vêm sem foto: a loja mostra a imagem de "produto indisponível" até você
--- subir as fotos pelo painel.
+-- subir as fotos pelo painel. As carnes de verdade, com foto e preço, ficam
+-- em sql/carnes_e_contato_clube.sql.
 
 SET NAMES utf8mb4;
 
@@ -27,10 +28,7 @@ INSERT INTO produtos (id_produto, nome, descricao, id_categoria, condicao, preco
 (9112, 'Gelo em Cubo 5kg', 'Saco de gelo em cubo de 5kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 12.00, 1),
 (9113, 'Carvão Vegetal 4kg', 'Saco de carvão vegetal de 4kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 24.90, 1),
 (9114, 'Seda e Isqueiro (kit)', 'Kit com seda e isqueiro. Venda proibida para menores de 18 anos.', (SELECT id_categoria FROM categorias WHERE nome = 'Tabacaria'), 'novo', 12.90, 1),
-(9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1),
-(9116, 'Picanha Assada (kg)', 'Picanha assada na brasa, servida aos domingos. Encomende com antecedência.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 129.90, 1),
-(9117, 'Costela Assada (kg)', 'Costela bovina assada lentamente na brasa. Só aos domingos.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 79.90, 1),
-(9118, 'Kit Domingo (1kg de carne + fardo de cerveja)', 'Combo de domingo: 1kg de carne assada + 12 latas de cerveja gelada.', (SELECT id_categoria FROM categorias WHERE nome = 'Carnes do Domingo'), 'novo', 159.90, 1);
+(9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1);
 
 -- Uma única variação por produto (preco NULL cai no preco_base, mesma regra
 -- do resto do sistema).
@@ -39,5 +37,4 @@ INSERT INTO produto_variacoes (id_produto_variacao, id_produto, preco, estoque) 
 (9104, 9104, NULL, 48), (9105, 9105, NULL, 24), (9106, 9106, NULL, 12),
 (9107, 9107, NULL, 10), (9108, 9108, NULL, 6), (9109, 9109, NULL, 18),
 (9110, 9110, NULL, 36), (9111, 9111, NULL, 48), (9112, 9112, NULL, 40),
-(9113, 9113, NULL, 25), (9114, 9114, NULL, 30), (9115, 9115, NULL, 20),
-(9116, 9116, NULL, 15), (9117, 9117, NULL, 20), (9118, 9118, NULL, 10);
+(9113, 9113, NULL, 25), (9114, 9114, NULL, 30), (9115, 9115, NULL, 20);
