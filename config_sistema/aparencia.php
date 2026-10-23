@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/loja.php';
+require_once __DIR__ . '/../includes/marca.php';
 exigirAdmin();
 
 $erro = '';
@@ -78,6 +79,10 @@ $config = $pdo->query('SELECT * FROM config_loja WHERE id_config = 1')->fetch();
             <h2>Identidade visual</h2>
             <?php if (!empty($config['logo_arquivo'])): ?>
                 <img id="logo-previa" src="/<?= htmlspecialchars($config['logo_arquivo']) ?>" width="150" alt="Logo atual" onerror="this.style.display='none'" style="border-radius:var(--raio-sm); margin-bottom:16px; display:block;">
+            <?php else: ?>
+                <?php // Sem logo enviada, a loja usa a logo padrão do Clube da Cerveja (includes/marca.php) — mostra ela aqui pra não parecer que está sem logo. ?>
+                <img id="logo-previa" src="/<?= MARCA_LOGO_PEQUENA ?>" width="110" alt="Logo padrão" style="margin-bottom:6px; display:block;">
+                <p id="aviso-logo-padrao" style="color:var(--cor-texto-suave); font-size:0.85rem; margin:0 0 16px;">Logo padrão do Clube da Cerveja. Envie outra só se quiser trocar.</p>
             <?php endif; ?>
             <label>Nome da loja<input type="text" name="nome_loja" value="<?= htmlspecialchars($config['nome_loja']) ?>" required></label>
             <div style="margin-bottom:16px;">
@@ -202,6 +207,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         previa.style.display = 'block';
                         previa.src = d.url;
+                        const avisoPadrao = document.getElementById('aviso-logo-padrao');
+                        if (avisoPadrao) { avisoPadrao.remove(); }
                         aviso('Logo atualizada.', true);
                     } else {
                         aviso(d.message || 'Não foi possível enviar a logo.', false);

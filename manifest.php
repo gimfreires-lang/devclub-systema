@@ -15,7 +15,8 @@ header('Content-Type: application/manifest+json; charset=utf-8');
 header('Cache-Control: public, max-age=3600');
 echo json_encode([
     'name' => $nome,
-    'short_name' => mb_substr($nome, 0, 12),
+    // "Clube da Cerveja" cortado em 12 letras ficava "Clube da Cer" embaixo do ícone.
+    'short_name' => $nome === 'Clube da Cerveja' ? 'Clube Cerveja' : mb_substr($nome, 0, 12),
     'description' => $app === 'admin' ? 'Gestão da loja: pedidos, produtos, clientes e caixa.' : 'Bebidas geladas, tabacaria e churrasco de domingo — ' . $nomeLoja . '.',
     'id' => $app === 'admin' ? '/dashboard.php' : '/loja/index.php',
     'start_url' => $app === 'admin' ? '/dashboard.php' : '/loja/index.php',
