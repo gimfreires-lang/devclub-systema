@@ -10,6 +10,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/csrf.php';
+
 function exigirDev(): void
 {
     if (empty($_SESSION['dev_usuario_id'])) {

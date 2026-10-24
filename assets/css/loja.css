@@ -1071,6 +1071,23 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
 .whatsapp-flutuante:hover { background: #25D366; transform: scale(1.08); box-shadow: var(--sombra-lg); }
 .whatsapp-flutuante svg { width: 30px; height: 30px; fill: #fff; }
 
+/* Respeita a borda arredondada / barra do iPhone. */
+@supports (bottom: env(safe-area-inset-bottom)) {
+    .whatsapp-flutuante {
+        right: calc(18px + env(safe-area-inset-right, 0px));
+        bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* No celular: botão um pouco menor e espaço no fim do rodapé, pra ele não
+   cobrir a última linha ("Desenvolvido por...") quando a página chega ao fim. */
+@media (max-width: 600px) {
+    .whatsapp-flutuante { width: 52px; height: 52px; }
+    .whatsapp-flutuante svg { width: 27px; height: 27px; }
+    .footer-final { padding-bottom: 84px; }
+}
+
+
 /* Popup rápido avisando que um item voltou pra loja — some sozinho em 5s ou no X. */
 .toast-oportunidade {
     position: fixed;
