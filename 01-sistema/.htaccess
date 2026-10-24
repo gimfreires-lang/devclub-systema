@@ -1,0 +1,33 @@
+# Proteções para hospedagem comum com Apache (ex.: Locaweb, Hostinger compartilhada).
+# No Easypanel quem faz isso é o nginx.template.conf.
+Options -Indexes
+ServerSignature Off
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Pastas que só o próprio sistema usa, nunca o navegador.
+    RewriteRule ^(sql|docs|includes)(/|$) - [R=404,L,NC]
+    # Arquivos de banco, documentação e configuração.
+    RewriteRule \.(sql|md|log|json|ya?ml|lock|sh|bak|conf|ini|dist)$ - [R=404,L,NC]
+    RewriteRule ^(config_credenciais|conecta_bd)\.php$ - [R=404,L,NC]
+    # Fotos e logo enviadas ficam em assets/: ali nunca roda PHP.
+    RewriteRule ^assets/.*\.(php|phtml|phar)$ - [R=404,L,NC]
+    # Arquivos ocultos (.git, .env...), menos .well-known (certificado HTTPS).
+    RewriteRule (^|/)\.(?!well-known/) - [R=404,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <FilesMatch "\.(sql|md|log|json|ya?ml|lock|sh|bak|conf|ini|dist)$">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "^(config_credenciais|conecta_bd)\.php$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+</IfModule>

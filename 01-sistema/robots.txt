@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /loja/
+Disallow: /painel_dev/
+Disallow: /caixa/
+Disallow: /clientes/
+Disallow: /pedidos/
+Disallow: /produtos/
+Disallow: /usuarios/
+Disallow: /config_sistema/
+Disallow: /notas_fiscais/
+Disallow: /integracoes/
+Disallow: /dashboard.php
+Disallow: /login.php
+Disallow: /loja/carrinho.php
+Disallow: /loja/checkout.php
+Disallow: /loja/minha_conta.php
+Disallow: /loja/meus_pedidos.php
+Disallow: /loja/minha_divida.php
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: WhatsApp
+Allow: /

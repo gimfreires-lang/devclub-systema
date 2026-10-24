@@ -1,0 +1,15 @@
+{
+  "folders": [
+    { "name": "01 - Sistema (código PHP)", "path": "01-sistema" },
+    { "name": "02 - Banco de dados", "path": "02-banco-de-dados" },
+    { "name": "03 - Marca", "path": "03-marca" },
+    { "name": "04 - Fotos das carnes", "path": "04-fotos-carnes" },
+    { "name": "05 - Prévia das telas", "path": "05-previa-das-telas" },
+    { "name": "06 - Documentação", "path": "06-documentacao" }
+  ],
+  "settings": {
+    "files.encoding": "utf8",
+    "files.eol": "\n",
+    "liveServer.settings.multiRootWorkspaceName": "01 - Sistema (código PHP)"
+  }
+}

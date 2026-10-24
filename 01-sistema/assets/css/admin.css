@@ -1,0 +1,991 @@
+/* assets/css/admin.css — mobile-first, mesmo sistema de design da Loja Online
+   (tipografia, cantos, sombras, botões, cartões), mas com paleta FIXA e neutra
+   (índigo) — de propósito não segue as cores configuráveis do tema da loja
+   (config_loja), porque o painel é do lojista/equipe, não do cliente, e não
+   faz sentido mudar de cara toda vez que alguém troca a cor da vitrine. */
+
+:root {
+    /* Paleta do Clube da Cerveja (preto, dourado e prata da logo). No painel
+       o fundo é claro, então a cor de ação é o preto e o dourado entra como
+       destaque (realces, hover, faixa do cabeçalho) — texto dourado em
+       fundo branco ficaria ilegível. */
+    --cor-primaria: #141414;
+    --cor-secundaria: #F2B705;
+    --cor-dourado: #F2B705;
+    --cor-dourado-escuro: #C98A00;
+    --cor-prata: #B8BCC2;
+    --cor-fundo: #FFFFFF;
+    --cor-texto: #1A1A1A;
+
+    --cor-texto-suave: color-mix(in srgb, var(--cor-texto) 55%, var(--cor-fundo));
+    --cor-borda: color-mix(in srgb, var(--cor-texto) 14%, var(--cor-fundo));
+    --cor-primaria-hover: color-mix(in srgb, var(--cor-primaria) 80%, var(--cor-dourado));
+    --cor-fundo-alt: color-mix(in srgb, var(--cor-dourado) 6%, var(--cor-fundo));
+    --cor-primaria-suave: color-mix(in srgb, var(--cor-dourado) 22%, var(--cor-fundo));
+
+    --cor-erro: #DC2626;
+    --cor-erro-fundo: #FEE2E2;
+    --cor-sucesso: #16A34A;
+    --cor-sucesso-fundo: #DCFCE7;
+    --cor-alerta: #B45309;
+    --cor-alerta-fundo: #FEF3C7;
+    --cor-pronto: #2563EB;
+    --cor-pronto-fundo: #DBEAFE;
+    --cor-enviado: #0D9488;
+    --cor-enviado-fundo: #CCFBF1;
+
+    --fonte-titulo: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --fonte-corpo: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+    --raio-sm: 8px;
+    --raio-md: 14px;
+    --raio-lg: 20px;
+
+    --sombra-sm: 0 1px 2px rgba(17, 12, 4, 0.06), 0 1px 3px rgba(17, 12, 4, 0.08);
+    --sombra-md: 0 6px 16px rgba(17, 12, 4, 0.08), 0 2px 6px rgba(17, 12, 4, 0.06);
+    --sombra-lg: 0 16px 40px rgba(17, 12, 4, 0.14), 0 4px 12px rgba(17, 12, 4, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--fonte-corpo);
+    background: var(--cor-fundo-alt);
+    color: var(--cor-texto);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; }
+
+a { color: #8A5D00; }
+
+h1, h2, h3 { font-family: var(--fonte-titulo); font-weight: 600; line-height: 1.25; margin: 0 0 14px; }
+h1 { font-size: 1.7rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.05rem; }
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px 40px;
+}
+
+/* ============ Cabeçalho ============ */
+
+.site-header {
+    background: var(--cor-fundo);
+    border-bottom: 3px solid var(--cor-dourado);
+    padding: 14px 16px;
+    margin-bottom: 26px;
+}
+
+.site-header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
+}
+
+.site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-family: var(--fonte-titulo);
+    font-weight: 600;
+    font-size: 1.15rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.site-logo img { height: 42px; width: auto; }
+
+/* Tela de login do painel: fundo preto com a logo, igual a identidade. */
+body.tela-login { background: #0E0E0E; }
+.tela-login .auth-card { border-top: 4px solid var(--cor-dourado); }
+.auth-logo { display: block; width: 150px; height: auto; margin: 0 auto 14px; }
+
+/* Botão hambúrguer — só existe visualmente no mobile (ver media query) */
+.nav-toggle {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    order: 2;
+}
+.nav-toggle span { display: block; width: 22px; height: 2px; background: var(--cor-texto); border-radius: 2px; transition: transform 0.2s ease, opacity 0.2s ease; }
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Dropdown flutuante abaixo do cabeçalho no mobile — não empurra o resto da
+   página, só sobrepõe (mesmo padrão de loja.css). */
+.site-nav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: absolute;
+    left: -16px;
+    right: -16px;
+    top: 100%;
+    background: var(--cor-fundo);
+    border-bottom: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-md);
+    padding: 4px 16px 12px;
+    order: 3;
+    width: calc(100% + 32px);
+}
+.site-nav.aberto { display: flex; }
+.site-nav a, .site-nav .site-nav-user { padding: 13px 4px; border-bottom: 1px solid var(--cor-borda); font-size: 0.95rem; }
+.site-nav a { color: var(--cor-texto); text-decoration: none; }
+.site-nav a:hover { color: var(--cor-primaria); }
+.site-nav .site-nav-user { color: var(--cor-texto-suave); }
+
+/* Grupo de menu com submenu (ex: "Caixa" agrupando PDV/Vendas/Histórico) —
+   no mobile é só uma seção que expande dentro do próprio dropdown; no
+   desktop (ver media query abaixo) vira um menu flutuante ao passar o
+   mouse ou clicar. */
+.nav-grupo-trigger {
+    display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; text-align: left;
+    background: none; border: none; font: inherit; color: var(--cor-texto); cursor: pointer;
+    padding: 13px 4px; border-bottom: 1px solid var(--cor-borda); font-size: 0.95rem;
+}
+.nav-grupo-trigger:hover { color: var(--cor-primaria); }
+.nav-grupo-trigger::after { content: '▾'; font-size: 0.7em; opacity: 0.6; }
+.nav-submenu { display: none; flex-direction: column; padding-left: 16px; }
+.nav-grupo.aberto .nav-submenu { display: flex; }
+.nav-submenu a { padding: 11px 4px; border-bottom: 1px solid var(--cor-borda); font-size: 0.92rem; }
+
+@media (min-width: 900px) {
+    .nav-toggle { display: none; }
+    .site-nav {
+        display: flex !important;
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px 6px;
+        width: auto;
+        background: none;
+        border-bottom: none;
+        box-shadow: none;
+        padding: 0;
+    }
+    .site-nav a, .site-nav .site-nav-user { border-bottom: none; padding: 6px 8px; border-radius: var(--raio-sm); }
+    .site-nav a:hover { background: var(--cor-primaria-suave); }
+
+    .nav-grupo { position: relative; }
+    .nav-grupo-trigger { width: auto; justify-content: center; border-bottom: none; padding: 6px 8px; border-radius: var(--raio-sm); }
+    .nav-grupo-trigger:hover { background: var(--cor-primaria-suave); }
+    .nav-submenu {
+        position: absolute; top: 100%; left: 0; z-index: 60;
+        background: var(--cor-fundo); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm);
+        box-shadow: var(--sombra-md); padding: 6px; min-width: 210px; padding-left: 6px;
+    }
+    .nav-grupo:hover .nav-submenu, .nav-grupo:focus-within .nav-submenu { display: flex; }
+    .nav-submenu a { border-bottom: none; padding: 8px 12px; border-radius: var(--raio-sm); white-space: nowrap; }
+    .nav-submenu a:hover { background: var(--cor-primaria-suave); }
+}
+
+/* ============ Título de página ============ */
+
+.page-title { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+.page-title .icone-titulo {
+    width: 42px; height: 42px; border-radius: var(--raio-sm);
+    background: var(--cor-primaria); color: var(--cor-dourado);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.page-title .icone-titulo svg { width: 22px; height: 22px; }
+.page-title h1 { margin: 0; }
+.page-title .subtitulo { color: var(--cor-texto-suave); font-size: 0.9rem; }
+
+/* Código único do produto (igual uma etiqueta/código de barras física) —
+   precisa ser bem visível, é o que o operador digita no PDV pra achar a
+   peça rápido. */
+.codigo-produto {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    border: 1.5px dashed var(--cor-primaria);
+    border-radius: var(--raio-sm);
+    padding: 6px 14px;
+    font-family: var(--fonte-titulo);
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.08em;
+}
+.codigo-produto .codigo-rotulo { font-family: var(--fonte-corpo); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.75; }
+
+/* Mesma etiqueta, versão compacta pra caber numa célula de tabela (produtos/lista.php) */
+.codigo-produto-mini {
+    display: inline-block;
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    border-radius: var(--raio-sm);
+    padding: 3px 9px;
+    font-family: var(--fonte-titulo);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+}
+
+/* ============ Botões ============ */
+
+/* .btn-outline/.btn-perigo/.btn-sm entram na MESMA regra base — precisam
+   funcionar sozinhas em cima de um <a> (sem precisar também ter .btn),
+   senão o link vira uma etiqueta de texto sublinhada em vez de botão. Já
+   aconteceu mais de uma vez sem essa regra (Categorias, editar, ver...). */
+button, input[type="submit"], .btn, .btn-outline, .btn-perigo, .btn-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 20px;
+    min-height: 44px;
+    border: none;
+    border-radius: var(--raio-sm);
+    background: var(--cor-primaria);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+button:hover, input[type="submit"]:hover, .btn:hover { background: var(--cor-primaria-hover); }
+button:active, input[type="submit"]:active, .btn:active { transform: scale(0.98); }
+button:disabled, input[type="submit"]:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+    background: transparent;
+    color: var(--cor-primaria);
+    border: 1.5px solid var(--cor-primaria);
+}
+.btn-outline:hover { background: var(--cor-primaria-suave); }
+
+.btn-texto {
+    background: transparent;
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    padding: 8px 4px;
+    min-height: 0;
+}
+.btn-texto:hover { background: transparent; color: var(--cor-primaria); }
+
+.btn-perigo { background: var(--cor-erro); }
+.btn-perigo:hover { background: color-mix(in srgb, var(--cor-erro) 85%, black); }
+
+/* "Contorno + perigo": botão vermelho vazado (sem isso o fundo vermelho de .btn-perigo
+   vencia o .btn-outline e ficava texto roxo em cima de vermelho). */
+.btn-outline.btn-perigo { background: transparent; color: var(--cor-erro); border: 1.5px solid var(--cor-erro); }
+.btn-outline.btn-perigo:hover { background: color-mix(in srgb, var(--cor-erro) 10%, transparent); }
+
+.btn-bloco { display: flex; width: 100%; }
+.btn-lg { padding: 14px 24px; font-size: 1.02rem; }
+.btn-sm { padding: 7px 14px; min-height: 34px; font-size: 0.85rem; }
+
+/* ============ Formulários ============ */
+
+label { display: block; margin-bottom: 14px; font-size: 0.92rem; font-weight: 500; }
+
+input[type="text"], input[type="password"], input[type="email"], input[type="number"],
+input[type="color"], input[type="file"], input[type="date"], input[type="tel"],
+select, textarea {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 13px;
+    min-height: 44px;
+    border: 1.5px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px var(--cor-primaria-suave);
+}
+input[type="color"] { padding: 4px; min-height: 44px; }
+textarea { min-height: 88px; }
+
+.form-linha { display: flex; flex-wrap: wrap; gap: 16px; }
+.form-linha > label { flex: 1; min-width: 180px; }
+
+/* ============ Cartões ============ */
+
+.card {
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.card h2 { margin-bottom: 16px; }
+
+/* "Zona de risco" — mesmo cartão, borda e título em vermelho, pra deixar
+   claro que ali dentro só tem ação destrutiva (excluir produto). Margem
+   maior em cima pra respirar separado do que vem antes (ex: grade-2col). */
+.card-perigo { border-color: var(--cor-erro); margin-top: 32px; }
+.card-perigo h2 { color: var(--cor-erro); }
+
+/* Ações de topo da página (voltar, compartilhar) lado a lado */
+.acoes-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 20px; }
+
+/* Cabeçalho de cartão com um controle do lado direito (ex: "Dados do
+   produto" + toggle Ativo) — título e controle na mesma linha. */
+.card-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.card-cabecalho h2 { margin-bottom: 0; }
+
+/* Cartão-sanfona (<details class="card card-sanfona" name="...">) -- usado
+   no painel do dev pra cada assunto virar uma seção que expande/recolhe,
+   só uma aberta por vez (o atributo name do <details> já garante isso
+   sozinho, sem JS). */
+.card-sanfona { padding: 0; overflow: hidden; }
+.card-sanfona > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--fonte-titulo);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+.card-sanfona > summary::-webkit-details-marker { display: none; }
+.card-sanfona > summary:hover { background: var(--cor-primaria-suave); }
+.card-sanfona > summary .icone-sanfona { flex-shrink: 0; transition: transform 0.15s ease; color: var(--cor-texto-suave); }
+.card-sanfona[open] > summary .icone-sanfona { transform: rotate(180deg); }
+.card-sanfona[open] > summary { border-bottom: 1px solid var(--cor-borda); }
+.card-sanfona > .sanfona-corpo { padding: 20px; }
+.card-sanfona > .sanfona-corpo > *:first-child { margin-top: 0; }
+
+/* 2 colunas no desktop pras seções da sanfona -- align-items:start é o que
+   evita que abrir uma seção (ficando alta) estique a vizinha fechada da
+   mesma linha pra acompanhar a altura; sem isso, o grid estica todo mundo
+   da linha por padrão e sobra espaço em branco feio na fechada. */
+.grade-sanfona { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+    .grade-sanfona { grid-template-columns: 1fr 1fr; }
+}
+
+/* Toggle "Produto ativo" — switch de verdade (estilo iOS), não um checkbox
+   solto fácil de passar batido. Vive ao lado do título do cartão. */
+.toggle-switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.toggle-switch input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    min-width: 42px;
+    background: var(--cor-borda);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+}
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(17, 12, 4, 0.25);
+    transition: transform 0.2s ease;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--cor-sucesso); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+.toggle-texto { font-weight: 700; font-size: 0.9rem; color: var(--cor-texto); }
+
+.auth-card {
+    max-width: 400px;
+    margin: 40px auto 0;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-md);
+    padding: 30px 24px;
+}
+.auth-card h1 { text-align: center; margin-bottom: 22px; }
+
+/* ============ Modal (ex: recortar foto) ============ */
+/* Mesmo padrão de loja.css — nunca usa alert()/confirm() do navegador. */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 12, 4, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+}
+.modal-overlay[hidden] { display: none; }
+
+.modal-card {
+    background: var(--cor-fundo);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-lg);
+    padding: 24px;
+    max-width: 480px;
+    width: 100%;
+}
+.modal-card h3 { text-align: center; margin-bottom: 16px; }
+.modal-card-lg { max-width: 620px; }
+
+.modal-acoes { display: flex; gap: 10px; margin-top: 16px; }
+.modal-acoes .btn, .modal-acoes .btn-outline, .modal-acoes .btn-perigo { flex: 1; margin: 0; }
+
+.area-corte { max-height: 60vh; overflow: hidden; background: #000; border-radius: var(--raio-sm); }
+.area-corte img { display: block; max-width: 100%; }
+
+/* Lista de variações dentro do popup de "Editar Variações do produto" — uma
+   caixa por variação (Cor, Tamanho...), com um checkbox por VALOR dentro.
+   Rolagem própria pra não empurrar os botões Cancelar/Atualizar pra fora
+   da tela quando a categoria tem muitas variações. */
+.lista-grupos-variacao { max-height: 50vh; overflow-y: auto; padding-right: 4px; margin-bottom: 4px; }
+.grupo-variacao {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+.grupo-variacao:last-child { margin-bottom: 0; }
+.grupo-variacao h4 { margin: 0 0 10px; font-size: 0.95rem; }
+.valores-checkbox { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.valores-checkbox label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 0.9rem; }
+.valores-checkbox input[type="checkbox"] { width: auto; min-height: 0; margin: 0; }
+
+/* ============ Alertas ============ */
+
+.alert { padding: 13px 16px; border-radius: var(--raio-sm); margin-bottom: 16px; font-weight: 500; font-size: 0.92rem; }
+.alert-erro { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.alert-sucesso { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+.alert-info { background: var(--cor-fundo-alt); color: var(--cor-texto-suave); border: 1px solid var(--cor-borda); }
+
+/* ============ Selo de status ============ */
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: var(--raio-sm);
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+}
+.status-pill.sucesso { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+.status-pill.erro { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.status-pill.alerta { background: var(--cor-alerta-fundo); color: var(--cor-alerta); }
+/* Etapas de pedido (classePillStatusPedido(), includes/pedidos.php) — mesmas
+   cores fixas do loja.css, pra reconhecer o estágio de relance nas duas telas. */
+.status-pill.cancelado { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.status-pill.concluido { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+.status-pill.preparando { background: var(--cor-alerta-fundo); color: var(--cor-alerta); }
+.status-pill.pronto { background: var(--cor-pronto-fundo); color: var(--cor-pronto); }
+.status-pill.enviado { background: var(--cor-enviado-fundo); color: var(--cor-enviado); }
+
+/* ============ Tabelas ============ */
+
+/* Todo <table> já sai estilizado direto (sem precisar de wrapper) — quem
+   quiser o efeito de cartão (sombra + cantos arredondados) por fora envolve
+   com <div class="tabela-wrap">, que aí "engole" a borda própria da tabela
+   pra não duplicar. */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+}
+
+th, td { padding: 12px 16px; border-bottom: 1px solid var(--cor-borda); text-align: left; font-size: 0.92rem; }
+th { background: var(--cor-fundo-alt); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--cor-texto-suave); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--cor-fundo-alt); }
+td a { font-weight: 600; }
+
+.tabela-wrap {
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+.tabela-wrap table { border: none; margin: 0; }
+
+/* ============ Compartilhar no WhatsApp — sempre verde, não segue a paleta interna ============ */
+
+.btn-compartilhar-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: #25D366;
+    border: 1.5px solid #25D366;
+    padding: 10px 18px;
+    min-height: 44px;
+    border-radius: var(--raio-sm);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+.btn-compartilhar-whatsapp svg { width: 20px; height: 20px; fill: #25D366; flex-shrink: 0; }
+.btn-compartilhar-whatsapp:hover { background: rgba(37, 211, 102, 0.1); }
+.btn-compartilhar-whatsapp.icone-so { width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 50%; justify-content: center; }
+.btn-compartilhar-whatsapp.icone-so svg { width: 18px; height: 18px; }
+
+/* ============ Utilitários ============ */
+
+.grade-2col { display: grid; grid-template-columns: 1fr; gap: 20px; }
+/* min-width:0 desfaz o comportamento padrão de coluna "1fr" do CSS Grid,
+   que por padrão nunca encolhe abaixo do conteúdo mínimo de dentro — sem
+   isso, um conteúdo largo (ex: a grade de fotos com itens de tamanho fixo)
+   estourava a coluna pra fora da tela inteira no mobile, em vez de quebrar
+   linha normalmente. */
+.grade-2col > * { min-width: 0; margin-bottom: 0; }
+/* width sozinho não bastava: a regra geral "img { max-width: 100% }" (lá em
+   cima, pra nenhuma foto normal estourar o layout) ainda podia encolher a
+   miniatura pra menos de 56px de LARGURA quando a coluna da tabela apertava
+   (nome de produto comprido competindo por espaço) — a altura ficava fixa
+   em 56px mas a largura minguava, virando uma "pílula" vertical em vez de
+   quadrado. min-width/max-width iguais à largura travam isso de vez. */
+.foto-produto-mini {
+    display: block;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    max-width: 56px;
+    border-radius: var(--raio-sm);
+    object-fit: cover;
+    background: var(--cor-fundo-alt);
+}
+
+/* Lista de produtos: colunas compactas, e só o nome (3ª coluna) pode quebrar de linha.
+   Sem isso, ao lado do menu de filtros a tabela fica espremida: nome em 4 linhas e
+   preço partido ("R$" em cima, valor embaixo). Se ainda assim não couber, a tabela rola. */
+.tabela-produtos { min-width: 680px; }
+.tabela-produtos th, .tabela-produtos td { padding: 10px 8px; }
+.tabela-produtos td { white-space: nowrap; }
+.tabela-produtos td:nth-child(3) { white-space: normal; min-width: 140px; }
+.tabela-produtos .foto-produto-mini { width: 48px; height: 48px; min-width: 48px; max-width: 48px; }
+
+/* Ações lado a lado numa célula de tabela (ex: "editar" + "excluir") */
+.celula-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.celula-acoes form { display: inline-flex; margin: 0; }
+
+/* Formulário de uma linha só (texto + botão), ex: "adicionar categoria" */
+.linha-form-rapido { display: flex; gap: 10px; margin-bottom: 20px; max-width: 420px; }
+.linha-form-rapido input { margin-top: 0; }
+.linha-form-rapido button { flex-shrink: 0; }
+
+/* Formulário compacto dentro de uma célula de tabela — inputs/botão lado a
+   lado numa linha só, sem os 14px de margem-bottom padrão do label/input. */
+.form-linha-compacta { display: flex; gap: 8px; align-items: center; margin: 0; flex-wrap: wrap; }
+.form-linha-compacta input, .form-linha-compacta select { margin: 0; min-height: 38px; padding: 6px 10px; width: auto; flex: 1; min-width: 120px; }
+.form-linha-compacta button { flex-shrink: 0; }
+.campo-valor-curto { width: 100px !important; }
+
+/* Checkboxes de variação (produtos/novo.php) — uma por linha, com respiro */
+.lista-checkbox label { display: flex; align-items: center; gap: 8px; font-weight: 400; margin-bottom: 8px; }
+.lista-checkbox input[type="checkbox"] { width: auto; min-height: 0; margin: 0; }
+
+/* Linhas de combinação geradas via JS (produtos/novo.php) */
+#combinacoes-container > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+#combinacoes-container input { width: auto; min-height: 38px; margin: 0; padding: 6px 10px; }
+#combinacoes-container .input-estoque { width: 70px !important; }
+#combinacoes-container .input-preco { width: 100px !important; }
+
+/* Grade de fotos do produto (produtos/editar.php) */
+.grade-fotos { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+.foto-item {
+    position: relative;
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    box-shadow: var(--sombra-sm);
+    padding: 10px;
+    text-align: center;
+    width: 148px;
+}
+.foto-item img { width: 120px; height: 120px; min-width: 120px; max-width: 120px; object-fit: cover; border-radius: var(--raio-sm); margin: 0 auto 8px; display: block; }
+.foto-item form { margin: 0; }
+/* 3 por linha precisa caber em ~484px de conteúdo do card (container 1100px
+   / 2 colunas do grade-2col / padding do card) — item mais largo que isso
+   quebra pra 2 por linha, por isso o botão de texto e o ícone ficam bem
+   compactos aqui (não é o .btn-sm padrão do resto do painel). */
+.foto-item-acoes { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 4px; }
+.foto-item-acoes .btn-sm { white-space: nowrap; padding: 6px 8px; font-size: 0.78rem; }
+.btn-icone { flex: 0 0 auto; width: 28px; padding: 0; }
+.btn-icone svg { width: 14px; height: 14px; }
+
+.foto-capa {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: var(--cor-primaria);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    z-index: 1;
+}
+
+/* Botão "adicionar foto" — vive dentro da mesma grade das fotos já
+   enviadas, do mesmo tamanho, com borda tracejada (mesmo padrão visual
+   de "adicionar mídia" usado em painéis de vendedor tipo Mercado Livre). */
+.foto-item-adicionar {
+    width: 140px;
+    height: 158px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--cor-fundo-alt);
+    border: 2px dashed var(--cor-borda);
+    border-radius: var(--raio-md);
+    color: var(--cor-texto-suave);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    min-height: 0;
+}
+.foto-item-adicionar:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); background: var(--cor-primaria-suave); }
+
+/* Resumo de crédito (clientes/detalhe.php) — Limite/Saldo devedor/Crédito
+   disponível em destaque, não é só texto corrido. */
+.stats-credito { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+.stat-credito {
+    flex: 1;
+    min-width: 150px;
+    background: var(--cor-fundo-alt);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 14px 16px;
+}
+.stat-credito .stat-label { display: block; font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cor-texto-suave); margin-bottom: 4px; }
+.stat-credito .stat-valor { display: block; font-family: var(--fonte-titulo); font-size: 1.3rem; font-weight: 700; color: var(--cor-texto); }
+.stat-credito .stat-valor.sucesso { color: var(--cor-sucesso); }
+.stat-credito .stat-valor.erro { color: var(--cor-erro); }
+.stat-credito .stat-valor.alerta { color: var(--cor-alerta); }
+.stat-credito .stat-obs { display: block; font-size: 0.75rem; color: var(--cor-texto-suave); margin-top: 4px; }
+/* stat-credito também é usado como link clicável (ex: dashboard.php) — reseta
+   o sublinhado/cor padrão de <a> e dá um feedback visual sutil no hover. */
+a.stat-credito { display: block; text-decoration: none; transition: border-color 0.15s ease; }
+a.stat-credito:hover { border-color: var(--cor-primaria); }
+
+/* Extrato de crédito (clientes/detalhe.php) */
+.lista-extrato { list-style: none; margin: 0; padding: 0; }
+.lista-extrato li {
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-sm);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+/* PDV (caixa/index.php) — linhas de busca de produto/carrinho/busca de
+   cliente, geradas via JS mas com classes de verdade (não mais <div> soltos
+   estilizados só pelo id do container). */
+.lista-resultados { margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.linha-resultado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.linha-resultado:last-child { border-bottom: none; }
+.linha-resultado-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.linha-resultado-info strong { font-size: 0.92rem; }
+.linha-resultado-meta { font-size: 0.8rem; color: var(--cor-texto-suave); }
+
+.lista-carrinho { margin-top: 4px; }
+.linha-carrinho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.linha-carrinho:last-child { border-bottom: none; }
+.linha-carrinho-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.linha-carrinho-info strong { font-size: 0.92rem; }
+.linha-carrinho-meta { font-size: 0.8rem; color: var(--cor-texto-suave); }
+.linha-carrinho-direita { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.linha-carrinho-subtotal { font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
+
+.carrinho-rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    margin-top: 6px;
+    border-top: 2px solid var(--cor-borda);
+}
+.carrinho-rodape strong { font-family: var(--fonte-titulo); font-size: 1.4rem; }
+
+.lista-vazia { color: var(--cor-texto-suave); font-size: 0.88rem; text-align: center; padding: 16px 0; }
+
+.cliente-vinculado-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--cor-sucesso-fundo);
+    color: var(--cor-sucesso);
+    border-radius: var(--raio-sm);
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 14px;
+}
+.cliente-vinculado-pill-neutro { background: var(--cor-fundo-alt); color: var(--cor-texto-suave); justify-content: flex-start; }
+
+/* Lista de "chips" genérica (ex: pagamentos já lançados em caixa/pagamento.php) */
+.lista-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Pagamento já lançado (caixa/pagamento.php) — pode ser removido caso o
+   operador tenha escolhido a forma errada ou digitado o valor errado. */
+.pill-removivel { gap: 8px; padding-right: 8px; }
+.pill-removivel button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; min-height: 0; padding: 0;
+    border: none; border-radius: 50%; background: rgba(0,0,0,0.12); color: inherit;
+    font-size: 0.85rem; line-height: 1; cursor: pointer;
+}
+.pill-removivel button:hover { background: rgba(0,0,0,0.22); }
+
+/* Categorias em cards (produtos/categorias.php) */
+.grade-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.card-categoria {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 16px;
+    background: var(--cor-fundo);
+}
+.card-categoria-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.card-categoria-topo strong { font-family: var(--fonte-titulo); font-size: 1.05rem; }
+
+/* Alternador tabela/cards (clientes/lista.php, pedidos/lista.php) */
+.alternador-visualizacao { display: flex; gap: 6px; margin-bottom: 14px; }
+.alternador-visualizacao button.ativo { background: var(--cor-primaria); color: #fff; border-color: var(--cor-primaria); }
+.alternador-visualizacao svg { width: 16px; height: 16px; }
+
+/* Grade de cards genérica pras listagens que oferecem visualização em cards */
+.grade-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.item-card {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 16px;
+    background: var(--cor-fundo);
+}
+.item-card-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.item-card-topo strong { font-family: var(--fonte-titulo); font-size: 1rem; }
+.item-card p { margin: 4px 0; font-size: 0.86rem; color: var(--cor-texto-suave); }
+.item-card .celula-acoes { margin-top: 12px; }
+
+/* ============ Layout com coluna lateral (listas com filtro — ex: Produtos) ============ */
+/* Mesmo padrão do catalogo-layout da loja: barra de pills no mobile, coluna
+   fixa lateral a partir do desktop. */
+
+.filtros-lateral { display: none; }
+.filtros-lateral h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cor-texto-suave);
+    margin: 20px 0 10px;
+}
+.filtros-lateral h2:first-child { margin-top: 0; }
+.filtros-lateral nav { display: flex; flex-direction: column; gap: 2px; }
+.filtros-lateral nav a { padding: 9px 12px; border-radius: var(--raio-sm); text-decoration: none; color: var(--cor-texto); font-weight: 500; font-size: 0.9rem; }
+.filtros-lateral nav a:hover { background: var(--cor-fundo-alt); }
+.filtros-lateral nav a.ativa { background: var(--cor-primaria-suave); color: var(--cor-primaria); font-weight: 700; }
+
+.filtros-mobile { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filtro-pill {
+    display: inline-flex;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--cor-borda);
+    background: var(--cor-fundo);
+    color: var(--cor-texto-suave);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+.filtro-pill:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+.filtro-pill.ativa { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
+
+.busca-lista { display: flex; gap: 8px; margin-bottom: 18px; }
+.busca-lista input { flex: 1; margin-top: 0; }
+.busca-lista button { flex-shrink: 0; padding: 0 20px; }
+
+/* ============ Paginação ============ */
+
+.paginacao { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 24px; }
+.paginacao a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: var(--raio-sm);
+    border: 1px solid var(--cor-borda);
+    text-decoration: none;
+    color: var(--cor-texto);
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+.paginacao a.ativa { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
+.paginacao a:hover:not(.ativa) { border-color: var(--cor-primaria); color: var(--cor-primaria); }
+
+@media (min-width: 768px) {
+    .container { padding: 0 24px 48px; }
+    .grade-2col { grid-template-columns: 1fr 1fr; }
+}
+
+/* A partir daqui a tela deixa de ser "mobile esticado" — mesmo critério
+   usado na loja: 1024px é onde faz sentido ter coluna lateral de verdade. */
+@media (min-width: 1024px) {
+    .layout-lateral {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 32px;
+        align-items: start;
+    }
+    .filtros-lateral { display: block; position: sticky; top: 90px; }
+    .filtros-mobile { display: none; }
+}
+
+/* ============ painel_dev: cards de configuração ============ */
+/* Cada seção que antes era um <details class="card-sanfona"> agora é um
+   card clicável (ícone + título + descrição de uma linha) que abre um
+   modal com scroll contendo o formulário — grid mobile-first (1 coluna,
+   2+ a partir de 640px), igual ao padrão .grade-cards já usado em listas
+   admin, só que os cards aqui são <button> (semântica de ação, não item). */
+.grade-cards-config { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 640px) {
+    .grade-cards-config { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+    .grade-cards-config { grid-template-columns: repeat(3, 1fr); }
+}
+.card-config {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-sm);
+    padding: 20px;
+    cursor: pointer;
+    font-family: var(--fonte-corpo);
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.card-config:hover, .card-config:focus-visible {
+    /* .card-config é um <button> puro (sem .btn/.btn-outline) -- sem
+       "background" aqui, a regra genérica button:hover (mais específica
+       que o background parado de .card-config, que não é :hover) preenche
+       o card inteiro com --cor-primaria-hover, apagando o texto. Mesma
+       classe de bug já documentada nesta página (iteração 25 da memória
+       do projeto): um <button> sem .btn herda o reset genérico. */
+    background: var(--cor-fundo);
+    box-shadow: var(--sombra-md);
+    border-color: var(--cor-primaria);
+    transform: translateY(-2px);
+}
+.card-config .icone-config {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--raio-md);
+    background: var(--cor-primaria-suave);
+    color: var(--cor-primaria);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.card-config .icone-config svg { width: 24px; height: 24px; }
+.card-config h3 { margin: 0; font-size: 1rem; }
+.card-config p { margin: 0; font-size: 0.85rem; color: var(--cor-texto-suave); line-height: 1.45; }
+
+.modal-config .modal-card {
+    max-width: 640px;
+    max-height: 85vh;
+    overflow-y: auto;
+    text-align: left;
+}
+.modal-config .modal-card > *:first-child { margin-top: 0; }
+
+/* ============ painel_dev: modo recuperação ============ */
+/* Login feito com a senha de recuperação (não a senha normal do dev) --
+   troca a cor de destaque pro dourado em toda a área do painel, pra ficar
+   visualmente óbvio que essa sessão não é o login normal. Mesmo tom de
+   --cor-dourado usado na loja (assets/css/loja.css). */
+body.modo-recuperacao {
+    --cor-primaria: #C9971F;
+    --cor-secundaria: #E0B23D;
+    --cor-primaria-hover: color-mix(in srgb, #C9971F 85%, black);
+    --cor-primaria-suave: color-mix(in srgb, #C9971F 12%, var(--cor-fundo));
+}
+.faixa-recuperacao {
+    background: #C9971F;
+    color: #1F1400;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+}

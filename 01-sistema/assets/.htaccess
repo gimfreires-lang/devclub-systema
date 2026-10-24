@@ -1,0 +1,4 @@
+# Nunca executar scripts enviados junto com imagens.
+<FilesMatch "\.(php|phtml|phar)$">
+    Require all denied
+</FilesMatch>
