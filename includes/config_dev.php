@@ -23,14 +23,13 @@ function buscarConfigDev(PDO $pdo): array
 /**
  * Crédito "Desenvolvido por ..." do rodapé da loja — cada desenvolvedor que
  * instalar este sistema pra outro cliente pode trocar pelo próprio
- * nome/link no painel_dev; em branco continua mostrando CoderNex (a mesma
- * marca que já estava fixa no código antes disso ser configurável).
+ * nome/link no painel_dev; em branco mostra gimfreires.tech.
  */
 function creditoRodape(PDO $pdo): array
 {
     $config = buscarConfigDev($pdo);
     return [
-        'nome' => !empty($config['footer_nome']) ? $config['footer_nome'] : 'CoderNex',
-        'link' => !empty($config['footer_link']) ? $config['footer_link'] : 'https://codernex.com.br',
+        'nome' => !empty($config['footer_nome']) ? $config['footer_nome'] : 'gimfreires.tech',
+        'link' => !empty($config['footer_link']) ? $config['footer_link'] : 'https://gimfreires.tech',
     ];
 }

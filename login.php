@@ -2,6 +2,7 @@
 require_once __DIR__ . '/conecta_bd.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/config_dev.php';
+require_once __DIR__ . '/includes/login_tentativas.php';
 
 $erro = '';
 
@@ -9,20 +10,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $senha = $_POST['senha'] ?? '';
 
-    $stmt = $pdo->prepare('SELECT id_usuario, nome, senha_hash, perfil FROM usuarios WHERE email = :email AND ativo = 1');
-    $stmt->execute([':email' => $email]);
-    $usuario = $stmt->fetch();
+    $minutosBloqueado = loginMinutosBloqueado($pdo, $email);
+    if ($minutosBloqueado > 0) {
+        $erro = "Muitas tentativas com senha errada. Tente de novo em {$minutosBloqueado} minuto" . ($minutosBloqueado === 1 ? '' : 's') . '.';
+    } else {
+        $stmt = $pdo->prepare('SELECT id_usuario, nome, senha_hash, perfil FROM usuarios WHERE email = :email AND ativo = 1');
+        $stmt->execute([':email' => $email]);
+        $usuario = $stmt->fetch();
 
-    if ($usuario && password_verify($senha, $usuario['senha_hash'])) {
-        $_SESSION['id_usuario'] = $usuario['id_usuario'];
-        $_SESSION['nome'] = $usuario['nome'];
-        $_SESSION['perfil'] = $usuario['perfil'];
-        session_regenerate_id(true);
-        header('Location: /dashboard.php');
-        exit;
+        if ($usuario && password_verify($senha, $usuario['senha_hash'])) {
+            loginLimparFalhas($pdo, $email);
+            $_SESSION['id_usuario'] = $usuario['id_usuario'];
+            $_SESSION['nome'] = $usuario['nome'];
+            $_SESSION['perfil'] = $usuario['perfil'];
+            session_regenerate_id(true);
+            header('Location: /dashboard.php');
+            exit;
+        }
+
+        loginRegistrarFalha($pdo, $email);
+        $erro = 'E-mail ou senha inválidos.';
     }
-
-    $erro = 'E-mail ou senha inválidos.';
 }
 
 $versaoCssAdmin = @filemtime(__DIR__ . '/assets/css/admin.css') ?: time();

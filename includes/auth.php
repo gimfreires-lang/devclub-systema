@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/travamento.php';
+require_once __DIR__ . '/csrf.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
