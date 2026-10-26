@@ -16,10 +16,25 @@ $arquivoCredenciaisAntigo = __DIR__ . '/../../brechodaveve_config_credenciais.ph
 // vazio ou sem as variáveis do banco NÃO conta como configurado — cai pra próxima opção ou pro
 // assistente em vez de quebrar todas as páginas.
 $bancoConfigurado = false;
+$credenciaisComErro = '';
 foreach ([$arquivoCredenciaisNovo, $arquivoCredenciaisAntigo] as $arquivoCredenciais) {
     if (file_exists($arquivoCredenciais)) {
-        require $arquivoCredenciais;
-        if (isset($host, $dbname, $username, $password)) {
+        // Lê o arquivo engolindo qualquer texto que ele imprima. Se faltar o
+        // "<?php" na primeira linha (erro comum ao colar no Easypanel), o PHP
+        // trata tudo como texto e mostrava os dados do banco, senha inclusive,
+        // no topo de todas as páginas -- e ainda impedia a sessão de começar.
+        ob_start();
+        try {
+            require $arquivoCredenciais;
+        } catch (Throwable $e) {
+            error_log('conecta_bd: erro de sintaxe em ' . basename($arquivoCredenciais) . ': ' . $e->getMessage());
+            $credenciaisComErro = 'O arquivo ' . basename($arquivoCredenciais) . ' tem um erro de digitação (confira aspas e ponto e vírgula).';
+        }
+        if (trim((string) ob_get_clean()) !== '') {
+            error_log('conecta_bd: ' . basename($arquivoCredenciais) . ' tem texto fora do PHP (falta "<?php" na primeira linha?)');
+            $credenciaisComErro = 'O arquivo ' . basename($arquivoCredenciais) . ' precisa começar com a linha <?php.';
+        }
+        if (empty($credenciaisComErro) && isset($host, $dbname, $username, $password)) {
             $bancoConfigurado = true;
             break;
         }
@@ -39,6 +54,9 @@ if (!$bancoConfigurado) {
     }
 }
 define('BANCO_CONFIGURADO', $bancoConfigurado);
+// Arquivo de credenciais existe mas está mal escrito: o painel_dev mostra o motivo
+// em vez de abrir o assistente de instalação para qualquer visitante.
+define('CREDENCIAIS_COM_ERRO', $credenciaisComErro);
 
 // Fuso da loja (Cascavel/PR). Servidores em contêiner vêm em UTC; sem isto os
 // horários de pedidos, caixa e comprovantes apareciam 3 horas adiantados.

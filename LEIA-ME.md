@@ -10,7 +10,7 @@ O site no ar só muda depois do merge desse PR: o Easypanel publica sozinho a pa
 | Pasta | O que tem |
 |---|---|
 | 01-sistema | Código completo da loja, do PDV e dos painéis (PHP + MySQL), pronto para publicar. |
-| 02-banco-de-dados | `SysVeronica.sql` (banco completo para instalação nova) e `carnes_e_contato_clube.sql` (carnes com fotos, endereço e telefone, para o banco que já está no ar). |
+| 02-banco-de-dados | `SysVeronica.sql` (banco completo para instalação nova), `carnes_e_contato_clube.sql` (carnes com fotos, endereço e telefone) e `bebidas_clube.sql` (15 bebidas, gelo, carvão, tabacaria e petiscos). Os dois últimos são para o banco que já está no ar: importe no phpMyAdmin, aba Importar. Rodar de novo não duplica nem desfaz o que você mudou. |
 | 03-marca | Logo do Clube da Cerveja em vários tamanhos e o favicon. |
 | 04-fotos-carnes | Fotos das carnes usadas na loja. Linguicinha e coxa de frango são ilustrativas. |
 | 05-previa-das-telas | Capturas da loja, do painel e do celular, feitas com o código desta pasta. |

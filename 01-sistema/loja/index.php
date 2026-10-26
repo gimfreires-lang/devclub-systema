@@ -132,7 +132,17 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= MARCA_NOME ?> — Bebidas geladas e churrasco de domingo</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= MARCA_NOME ?> — Bebidas geladas e churrasco de domingo</title>
+<?php $descricaoLoja = 'Cerveja gelada, destilados, gelo, carvão e tabacaria em Cascavel. Aos domingos, carne assada na brasa: encomende a sua.'; ?>
+<meta name="description" content="<?= htmlspecialchars($descricaoLoja) ?>">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="<?= MARCA_NOME ?>">
+<meta property="og:title" content="<?= MARCA_NOME ?> — Bebidas geladas e churrasco de domingo">
+<meta property="og:description" content="<?= htmlspecialchars($descricaoLoja) ?>">
+<meta property="og:image" content="<?= htmlspecialchars(urlBaseAtual() . '/' . MARCA_LOGO) ?>">
+<meta property="og:url" content="<?= htmlspecialchars(urlBaseAtual() . '/loja/') ?>">
+<meta property="og:locale" content="pt_BR">
+</head>
 <body>
 <?php require __DIR__ . '/../includes/loja_header.php'; ?>
     <div class="banner-hero">

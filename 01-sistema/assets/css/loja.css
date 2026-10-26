@@ -287,6 +287,11 @@ p { margin: 0 0 12px; }
 .modal-card p { color: var(--cor-texto-suave); margin-bottom: 22px; }
 
 .modal-acoes { display: flex; gap: 10px; }
+
+/* Confirmação de idade (+18): fica por cima de tudo, inclusive do botão do WhatsApp. */
+#modal-idade { z-index: 200; background: rgba(8, 6, 2, 0.88); }
+.modal-idade { max-width: 380px; }
+.modal-idade-logo { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 12px; display: block; }
 .modal-acoes .btn, .modal-acoes .btn-outline { flex: 1; margin: 0; }
 
 /* ============ Botões — sempre botão de verdade, nunca link de texto ============ */
@@ -1381,3 +1386,13 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
 @media (min-width: 1440px) {
     .product-grid { grid-template-columns: repeat(5, 1fr); }
 }
+
+/* ============ Páginas de texto (política de privacidade) ============ */
+.texto-legal { max-width: 760px; margin: 0 auto; padding-bottom: 40px; line-height: 1.65; }
+.texto-legal h2 { font-size: 1.15rem; margin: 28px 0 8px; color: var(--cor-dourado); text-transform: uppercase; letter-spacing: 0.02em; }
+.texto-legal p, .texto-legal li { color: var(--cor-texto); }
+.texto-legal ul { padding-left: 20px; margin: 8px 0 12px; display: grid; gap: 6px; }
+.texto-legal a { color: var(--cor-dourado); }
+.texto-legal-rodape { margin-top: 28px; font-size: 0.9rem; color: var(--cor-texto-suave) !important; }
+.aviso-privacidade { font-size: 0.82rem; color: var(--cor-texto-suave); margin: 4px 0 12px; line-height: 1.45; }
+.aviso-privacidade a { color: var(--cor-dourado); }

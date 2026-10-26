@@ -56,6 +56,49 @@ $versaoJs = @filemtime(__DIR__ . '/../assets/js/loja.js') ?: time();
     </div>
 </header>
 
+<?php
+// Confirmação de idade: a loja vende bebida alcoólica e tabaco, proibidos para
+// menores de 18 anos (ECA, art. 81). Aparece uma vez e fica lembrada por 90
+// dias neste navegador. Robôs de busca e do WhatsApp não rodam JavaScript,
+// então continuam lendo a página normalmente.
+?>
+<div class="modal-overlay" id="modal-idade" hidden role="dialog" aria-modal="true" aria-labelledby="idade-titulo">
+    <div class="modal-card modal-idade">
+        <img src="/<?= htmlspecialchars($logoCabecalho) ?>" alt="" class="modal-idade-logo" onerror="this.remove()">
+        <h3 id="idade-titulo">Você tem 18 anos ou mais?</h3>
+        <p id="idade-texto">Aqui vendemos bebidas alcoólicas e produtos de tabacaria, proibidos para menores de 18 anos.</p>
+        <div class="modal-acoes" id="idade-acoes">
+            <button type="button" class="btn-outline" id="idade-nao">Não</button>
+            <button type="button" class="btn" id="idade-sim">Tenho 18+</button>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var CHAVE = 'clube_maior18', DIAS = 90;
+    var modal = document.getElementById('modal-idade');
+    if (!modal) { return; }
+    var confirmado = false;
+    try {
+        var ts = parseInt(localStorage.getItem(CHAVE) || '0', 10);
+        confirmado = ts > 0 && Date.now() - ts < DIAS * 24 * 3600 * 1000;
+    } catch (e) {}
+    if (confirmado) { return; }
+    modal.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    document.getElementById('idade-sim').addEventListener('click', function () {
+        try { localStorage.setItem(CHAVE, String(Date.now())); } catch (e) {}
+        modal.hidden = true;
+        document.documentElement.style.overflow = '';
+    });
+    document.getElementById('idade-nao').addEventListener('click', function () {
+        document.getElementById('idade-titulo').textContent = 'Volte quando fizer 18 anos';
+        document.getElementById('idade-texto').textContent = 'Este site não pode ser usado por menores de idade.';
+        document.getElementById('idade-acoes').remove();
+    });
+})();
+</script>
+
 <?php if (!empty($_SESSION['id_cliente'])): ?>
 <div class="modal-overlay" id="modal-sair" hidden>
     <div class="modal-card">

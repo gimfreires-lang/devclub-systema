@@ -37,8 +37,9 @@ if (isset($_GET['editar_banco'])) {
 //    (Easypanel > Armazenamento > config_credenciais.php).
 $bancoDisponivel = BANCO_CONFIGURADO && isset($pdo) && $pdo instanceof PDO;
 $devLogado = !empty($_SESSION['dev_usuario_id']);
-$assistentePermitido = $bancoDisponivel ? ($modoEdicaoBanco && $devLogado) : !BANCO_CONFIGURADO;
-$bancoForaDoAr = BANCO_CONFIGURADO && !$bancoDisponivel;
+$credenciaisComErro = defined('CREDENCIAIS_COM_ERRO') ? (string) CREDENCIAIS_COM_ERRO : '';
+$assistentePermitido = $bancoDisponivel ? ($modoEdicaoBanco && $devLogado) : (!BANCO_CONFIGURADO && $credenciaisComErro === '');
+$bancoForaDoAr = !$bancoDisponivel && (BANCO_CONFIGURADO || $credenciaisComErro !== '');
 if (!$assistentePermitido) {
     $modoEdicaoBanco = false;
     unset($_SESSION['assistente_banco_autorizado']);
@@ -251,6 +252,9 @@ $versaoCssAdmin = @filemtime(__DIR__ . '/../assets/css/admin.css') ?: time();
         <div class="auth-card">
             <p style="text-align:center; text-transform:uppercase; letter-spacing:0.08em; font-size:0.75rem; font-weight:700; color:var(--cor-primaria); margin-bottom:6px;">Banco de dados</p>
             <h1>Sem conexão com o banco</h1>
+            <?php if ($credenciaisComErro !== ''): ?>
+                <p class="alert alert-erro"><?= htmlspecialchars($credenciaisComErro) ?></p>
+            <?php endif; ?>
             <p style="color:var(--cor-texto-suave); font-size:0.9rem;">
                 O sistema tem os dados de conexão, mas o banco não respondeu. Confira se o serviço do MySQL está rodando no Easypanel
                 e se os dados em <strong>Armazenamento &gt; config_credenciais.php</strong> estão certos. Depois recarregue esta página.

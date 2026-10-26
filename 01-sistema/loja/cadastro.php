@@ -298,6 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>WhatsApp (com DDD)<input type="text" name="whatsapp" id="campo-whatsapp" required placeholder="(11) 98765-4321" inputmode="numeric" maxlength="16"<?= $tipoIdentificador === 'whatsapp' ? ' readonly value="' . htmlspecialchars(formatarWhatsappParaEdicao($identificador)) . '"' : '' ?>></label>
         <?php if ($tipoIdentificador === 'whatsapp'): ?><p style="margin-top:-8px; font-size:0.85rem; color:var(--cor-texto-suave);">Esse é o número que você digitou. <a href="/loja/cadastro.php">Trocar</a></p><?php endif; ?>
         <label>Crie uma senha<input type="password" name="senha" id="campo-senha" required minlength="6"></label>
+        <p class="aviso-privacidade">Ao se cadastrar, você confirma que tem 18 anos ou mais e concorda com a <a href="/loja/privacidade.php" target="_blank" rel="noopener">política de privacidade</a>.</p>
         <button type="submit" class="btn-bloco">Cadastrar</button>
     </form>
     <script>
