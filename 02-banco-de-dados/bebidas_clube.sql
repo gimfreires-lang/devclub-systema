@@ -1,0 +1,44 @@
+-- Bebidas, gelo, carvão, tabacaria e petiscos do Clube da Cerveja.
+-- Para importar no banco que JÁ ESTÁ NO AR, pelo phpMyAdmin:
+--   Easypanel > serviço do MySQL > phpMyAdmin > banco SysVeronica > aba Importar.
+--
+-- É seguro rodar mais de uma vez: só ACRESCENTA o que falta. Categoria ou
+-- produto que já existe fica como está, inclusive preço, estoque e foto que
+-- você já tenha mudado pelo painel.
+--
+-- Preços e estoques são uma base de exemplo: confira em Produtos > Editar
+-- antes de divulgar a loja. Os produtos entram sem foto ("Foto em breve")
+-- até você enviar as fotos pelo painel. Para tirar um produto da loja sem
+-- apagar, desmarque "Ativo" na edição.
+
+SET NAMES utf8mb4;
+
+INSERT IGNORE INTO categorias (nome) VALUES
+('Cervejas'), ('Destilados'), ('Vinhos'), ('Refrigerantes e Energéticos'),
+('Gelo e Carvão'), ('Tabacaria'), ('Petiscos');
+
+INSERT INTO produtos (id_produto, nome, descricao, id_categoria, condicao, preco_base, ativo) VALUES
+(9101, 'Cerveja Pilsen Lata 350ml', 'Lata de 350ml, trincando de gelada.', (SELECT id_categoria FROM categorias WHERE nome = 'Cervejas'), 'novo', 4.99, 1),
+(9102, 'Fardo Cerveja Pilsen 12 latas', 'Fardo com 12 latas de 350ml. Ideal pro churrasco.', (SELECT id_categoria FROM categorias WHERE nome = 'Cervejas'), 'novo', 54.90, 1),
+(9103, 'Cerveja Long Neck Puro Malte 330ml', 'Long neck puro malte, gelada.', (SELECT id_categoria FROM categorias WHERE nome = 'Cervejas'), 'novo', 7.49, 1),
+(9104, 'Cerveja Litrão 1L', 'Garrafa retornável de 1 litro. Traga o casco e pague menos.', (SELECT id_categoria FROM categorias WHERE nome = 'Cervejas'), 'novo', 11.90, 1),
+(9105, 'Cerveja Artesanal IPA 500ml', 'IPA artesanal, amargor marcante e aroma cítrico.', (SELECT id_categoria FROM categorias WHERE nome = 'Cervejas'), 'novo', 22.90, 1),
+(9106, 'Vodka 1L', 'Vodka destilada, garrafa de 1 litro.', (SELECT id_categoria FROM categorias WHERE nome = 'Destilados'), 'novo', 39.90, 1),
+(9107, 'Cachaça Envelhecida 700ml', 'Cachaça envelhecida em barril de carvalho.', (SELECT id_categoria FROM categorias WHERE nome = 'Destilados'), 'novo', 49.90, 1),
+(9108, 'Whisky 8 anos 1L', 'Whisky blended 8 anos.', (SELECT id_categoria FROM categorias WHERE nome = 'Destilados'), 'novo', 119.90, 1),
+(9109, 'Vinho Tinto Seco 750ml', 'Vinho tinto seco, ótimo com carne vermelha.', (SELECT id_categoria FROM categorias WHERE nome = 'Vinhos'), 'novo', 44.90, 1),
+(9110, 'Refrigerante Cola 2L', 'Garrafa PET de 2 litros.', (SELECT id_categoria FROM categorias WHERE nome = 'Refrigerantes e Energéticos'), 'novo', 10.99, 1),
+(9111, 'Energético Lata 473ml', 'Energético em lata de 473ml.', (SELECT id_categoria FROM categorias WHERE nome = 'Refrigerantes e Energéticos'), 'novo', 9.90, 1),
+(9112, 'Gelo em Cubo 5kg', 'Saco de gelo em cubo de 5kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 12.00, 1),
+(9113, 'Carvão Vegetal 4kg', 'Saco de carvão vegetal de 4kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 24.90, 1),
+(9114, 'Seda e Isqueiro (kit)', 'Kit com seda e isqueiro. Venda proibida para menores de 18 anos.', (SELECT id_categoria FROM categorias WHERE nome = 'Tabacaria'), 'novo', 12.90, 1),
+(9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1)
+ON DUPLICATE KEY UPDATE id_produto = id_produto;
+
+-- Estoque inicial de exemplo (uma variação por produto; preço NULL usa o preço do produto).
+INSERT IGNORE INTO produto_variacoes (id_produto_variacao, id_produto, preco, estoque) VALUES
+(9101, 9101, NULL, 240), (9102, 9102, NULL, 30), (9103, 9103, NULL, 120),
+(9104, 9104, NULL, 48), (9105, 9105, NULL, 24), (9106, 9106, NULL, 12),
+(9107, 9107, NULL, 10), (9108, 9108, NULL, 6), (9109, 9109, NULL, 18),
+(9110, 9110, NULL, 36), (9111, 9111, NULL, 48), (9112, 9112, NULL, 40),
+(9113, 9113, NULL, 25), (9114, 9114, NULL, 30), (9115, 9115, NULL, 20);

@@ -42,6 +42,7 @@ $creditoRodape = creditoRodape($pdo);
             <span>Bebidas geladas, tabacaria e carne assada todo domingo.</span>
             <span class="footer-aviso-idade">Venda de bebidas alcoólicas e produtos de tabacaria proibida para menores de 18 anos. Se beber, não dirija.</span>
             <span>© <?= date('Y') ?> <?= htmlspecialchars($configContato['nome_loja']) ?>. Todos os direitos reservados.</span>
+            <span><a href="/loja/privacidade.php">Política de privacidade</a></span>
             <span>Desenvolvido por <a href="<?= htmlspecialchars($creditoRodape['link']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($creditoRodape['nome']) ?></a></span>
         </div>
     </div>
