@@ -287,6 +287,11 @@ p { margin: 0 0 12px; }
 .modal-card p { color: var(--cor-texto-suave); margin-bottom: 22px; }
 
 .modal-acoes { display: flex; gap: 10px; }
+
+/* Confirmação de idade (+18): fica por cima de tudo, inclusive do botão do WhatsApp. */
+#modal-idade { z-index: 200; background: rgba(8, 6, 2, 0.88); }
+.modal-idade { max-width: 380px; }
+.modal-idade-logo { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 12px; display: block; }
 .modal-acoes .btn, .modal-acoes .btn-outline { flex: 1; margin: 0; }
 
 /* ============ Botões — sempre botão de verdade, nunca link de texto ============ */

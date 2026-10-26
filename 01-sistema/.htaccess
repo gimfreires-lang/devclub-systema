@@ -1,6 +1,7 @@
 # Proteções para hospedagem comum com Apache (ex.: Locaweb, Hostinger compartilhada).
 # No Easypanel quem faz isso é o nginx.template.conf.
 Options -Indexes
+ErrorDocument 404 /404.html
 ServerSignature Off
 
 <IfModule mod_rewrite.c>
