@@ -105,138 +105,150 @@ function smtpCredenciais(PDO $pdo): array
  * $corpoTexto é opcional — se não informado, é gerado automaticamente a partir do
  * HTML (tags removidas), pra clientes de e-mail que não mostram HTML caírem numa
  * versão em texto puro em vez de ver o código HTML cru.
+ *
+ * Segue o padrão SMTP à risca, porque os provedores (Gmail, Outlook, Hostinger,
+ * Zoho...) passaram a recusar mensagens fora dele:
+ *  - toda quebra de linha é CRLF (LF "solto" é recusado desde o caso "SMTP smuggling");
+ *  - corpo em base64 com linhas de 76 caracteres (nunca passa do limite de 998);
+ *  - cabeçalhos Date e Message-ID presentes (o Gmail recusa sem Message-ID);
+ *  - cada resposta do servidor é conferida, e o erro devolvido é o do passo que falhou.
  */
 function enviarEmailSMTP(PDO $pdo, string $destinatario, string $assunto, string $corpoHtml, ?string $corpoTexto = null): array
 {
     $smtp = smtpCredenciais($pdo);
     if (!$smtp['host'] || !$smtp['user'] || !$smtp['pass']) {
-        return ['success' => false, 'message' => 'SMTP não configurado (painel_dev ou brechodaveve_config_credenciais.php).'];
+        return smtpFalha('SMTP não configurado (preencha em Painel do desenvolvedor > E-mail (SMTP)).');
     }
 
-    // Porta 465 = SSL implícito (a conexão já nasce criptografada, sem handshake em
-    // texto puro antes). Porta 587 (ou qualquer outra) = STARTTLS (conecta em texto
-    // puro e só depois manda "STARTTLS" pra criptografar). São protocolos diferentes —
-    // usar o esquema errado pra porta trava ou é recusado pelo servidor.
-    $usa_ssl_implicito = ((int) $smtp['port'] === 465);
+    // Sem "e-mail de envio" preenchido, usa o próprio usuário SMTP -- a maioria
+    // dos provedores só aceita remetente igual à conta autenticada.
+    $remetente = trim((string) ($smtp['from_email'] ?: $smtp['user']));
+    if (!filter_var($remetente, FILTER_VALIDATE_EMAIL)) {
+        return smtpFalha('E-mail de envio inválido: "' . $remetente . '". Preencha "E-mail de envio" no SMTP.');
+    }
+    $destinatario = trim($destinatario);
+    if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
+        return smtpFalha('E-mail do destinatário inválido: "' . $destinatario . '".');
+    }
+
+    $porta = (int) ($smtp['port'] ?: 587);
+    // Porta 465 = SSL implícito (a conexão já nasce criptografada). Qualquer outra
+    // (587, 25, 2525) = STARTTLS. Usar o esquema errado pra porta trava ou é recusado.
+    $usa_ssl_implicito = ($porta === 465);
     $esquema = $usa_ssl_implicito ? 'ssl://' : 'tcp://';
 
-    $socket = @stream_socket_client(
-        $esquema . $smtp['host'] . ':' . $smtp['port'],
-        $errno, $errstr, 15
-    );
+    $socket = @stream_socket_client($esquema . $smtp['host'] . ':' . $porta, $errno, $errstr, 15);
     if (!$socket) {
-        return ['success' => false, 'message' => "Não foi possível conectar ao SMTP ($errstr)"];
+        return smtpFalha("Não foi possível conectar em {$smtp['host']}:{$porta} ($errstr). Confira host/porta e se a hospedagem libera essa porta de saída.");
     }
-    stream_set_timeout($socket, 15);
+    stream_set_timeout($socket, 20);
 
     $lerResposta = function () use ($socket) {
         $resposta = '';
-        while (($linha = fgets($socket, 515)) !== false) {
+        while (($linha = fgets($socket, 1024)) !== false) {
             $resposta .= $linha;
-            // Linha final de uma resposta multi-linha tem um espaço na 4ª coluna (ex: "250 ")
-            // em vez de hífen (ex: "250-"). Sem checar isso, paramos de ler no meio da resposta.
-            if (isset($linha[3]) && $linha[3] === ' ') {
+            // Última linha de resposta multi-linha tem espaço na 4ª coluna ("250 "),
+            // as anteriores têm hífen ("250-").
+            if (!isset($linha[3]) || $linha[3] === ' ') {
                 break;
             }
         }
         return $resposta;
     };
-    $enviarComando = function ($cmd) use ($socket) {
-        fwrite($socket, $cmd . "\r\n");
+    // Manda o comando e confere se o código de resposta é um dos esperados.
+    $passo = function (?string $cmd, array $esperados) use ($socket, $lerResposta) {
+        if ($cmd !== null) {
+            fwrite($socket, $cmd . "\r\n");
+        }
+        $resposta = $lerResposta();
+        return [in_array((int) substr($resposta, 0, 3), $esperados, true), trim($resposta)];
     };
-    $codigo = function ($resposta) {
-        return (int) substr($resposta, 0, 3);
+    $abortar = function (string $etapa, string $resposta) use ($socket) {
+        @fwrite($socket, "QUIT\r\n");
+        fclose($socket);
+        return smtpFalha("SMTP recusou em {$etapa}: " . ($resposta !== '' ? $resposta : 'sem resposta (tempo esgotado)'));
     };
 
-    $lerResposta(); // saudação inicial do servidor
+    [$ok, $r] = $passo(null, [220]);
+    if (!$ok) { return $abortar('a saudação', $r); }
 
-    $enviarComando('EHLO ' . dominioAtual());
-    $lerResposta();
+    // EHLO precisa de um nome de host válido -- HTTP_HOST pode trazer ":porta".
+    $ehlo = preg_replace('/[^A-Za-z0-9.-]/', '', explode(':', dominioAtual())[0]) ?: 'localhost';
 
-    // Se a conexão já é SSL implícito (porta 465), não faz STARTTLS — já está
-    // criptografada desde o "ssl://" do stream_socket_client acima.
+    [$ok, $r] = $passo('EHLO ' . $ehlo, [250]);
+    if (!$ok) { return $abortar('EHLO', $r); }
+
     if (!$usa_ssl_implicito) {
-        $enviarComando('STARTTLS');
-        $respTls = $lerResposta();
-        if ($codigo($respTls) === 220) {
-            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+        [$ok, $r] = $passo('STARTTLS', [220]);
+        if ($ok) {
+            if (!@stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
                 fclose($socket);
-                return ['success' => false, 'message' => 'Falha ao negociar TLS com o servidor SMTP.'];
+                return smtpFalha('Falha ao negociar TLS (STARTTLS) com o servidor SMTP.');
             }
-            $enviarComando('EHLO ' . dominioAtual());
-            $lerResposta();
+            [$ok, $r] = $passo('EHLO ' . $ehlo, [250]);
+            if (!$ok) { return $abortar('EHLO após TLS', $r); }
         }
     }
 
-    $enviarComando('AUTH LOGIN');
-    $lerResposta();
-    $enviarComando(base64_encode($smtp['user']));
-    $lerResposta();
-    $enviarComando(base64_encode($smtp['pass']));
-    $respAuth = $lerResposta();
-    if ($codigo($respAuth) !== 235) {
-        $enviarComando('QUIT');
-        fclose($socket);
-        return ['success' => false, 'message' => 'Autenticação SMTP recusada (usuário/senha). Resposta: ' . trim($respAuth)];
-    }
+    [$ok, $r] = $passo('AUTH LOGIN', [334]);
+    if (!$ok) { return $abortar('AUTH LOGIN', $r); }
+    [$ok, $r] = $passo(base64_encode($smtp['user']), [334]);
+    if (!$ok) { return $abortar('o usuário SMTP', $r); }
+    [$ok, $r] = $passo(base64_encode($smtp['pass']), [235]);
+    if (!$ok) { return $abortar('a senha SMTP (usuário/senha recusados; no Gmail use "senha de app")', $r); }
 
-    $remetente = $smtp['from_email'];
-    $enviarComando("MAIL FROM:<$remetente>");
-    $lerResposta();
-    $enviarComando("RCPT TO:<$destinatario>");
-    $respRcpt = $lerResposta();
-    if ($codigo($respRcpt) >= 500) {
-        $enviarComando('QUIT');
-        fclose($socket);
-        return ['success' => false, 'message' => 'Destinatário recusado pelo servidor: ' . trim($respRcpt)];
-    }
-
-    $enviarComando('DATA');
-    $lerResposta();
+    [$ok, $r] = $passo("MAIL FROM:<{$remetente}>", [250]);
+    if (!$ok) { return $abortar('o remetente (MAIL FROM)', $r); }
+    [$ok, $r] = $passo("RCPT TO:<{$destinatario}>", [250, 251]);
+    if (!$ok) { return $abortar('o destinatário (RCPT TO)', $r); }
+    [$ok, $r] = $passo('DATA', [354]);
+    if (!$ok) { return $abortar('DATA', $r); }
 
     if ($corpoTexto === null) {
         // Fallback automático: HTML -> texto puro (quebra de linha nos <br>/</p>, tags removidas)
         $corpoTexto = trim(html_entity_decode(strip_tags(preg_replace('/<br\s*\/?>|<\/p>|<\/div>/i', "\n", $corpoHtml)), ENT_QUOTES, 'UTF-8'));
-        $corpoTexto = preg_replace("/\n{3,}/", "\n\n", $corpoTexto);
+        $corpoTexto = preg_replace("/[ \t]+/", ' ', $corpoTexto);
+        $corpoTexto = preg_replace("/\n\s*\n\s*/", "\n\n", $corpoTexto);
     }
 
-    $assuntoCodificado = '=?UTF-8?B?' . base64_encode($assunto) . '?=';
-    $nomeRemetente = $smtp['from_name'];
+    $codificar = fn (string $texto) => '=?UTF-8?B?' . base64_encode($texto) . '?=';
+    $base64 = fn (string $texto) => rtrim(chunk_split(base64_encode($texto), 76, "\r\n"));
+    $dominioRemetente = substr(strrchr($remetente, '@'), 1);
+    $boundary = 'clube_' . bin2hex(random_bytes(12));
 
-    // multipart/alternative: manda as duas versões (texto puro + HTML) na mesma
-    // mensagem. Cliente de e-mail que entende HTML mostra a versão bonita; quem não
-    // entende (ou o usuário preferir "ver como texto simples") cai na versão em texto.
-    $boundary = 'brechodaveve_' . bin2hex(random_bytes(12));
-
-    $cabecalhos = "From: {$nomeRemetente} <{$remetente}>\r\n"
-                . "To: <{$destinatario}>\r\n"
-                . "Subject: {$assuntoCodificado}\r\n"
-                . "MIME-Version: 1.0\r\n"
-                . "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
-
-    // Linhas que começam com "." precisam de um "." extra (regra do protocolo SMTP,
-    // senão o servidor interpreta como fim da mensagem no meio do texto).
-    $escapar = function ($texto) { return preg_replace('/^\./m', '..', $texto); };
+    // multipart/alternative: texto puro + HTML na mesma mensagem.
+    $cabecalhos = implode("\r\n", [
+        'Date: ' . date('r'),
+        'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . $dominioRemetente . '>',
+        'From: ' . $codificar((string) $smtp['from_name']) . " <{$remetente}>",
+        "To: <{$destinatario}>",
+        'Subject: ' . $codificar($assunto),
+        'MIME-Version: 1.0',
+        "Content-Type: multipart/alternative; boundary=\"{$boundary}\"",
+    ]);
 
     $mensagem = "--{$boundary}\r\n"
               . "Content-Type: text/plain; charset=UTF-8\r\n"
-              . "Content-Transfer-Encoding: 8bit\r\n\r\n"
-              . $escapar($corpoTexto) . "\r\n\r\n"
+              . "Content-Transfer-Encoding: base64\r\n\r\n"
+              . $base64($corpoTexto) . "\r\n"
               . "--{$boundary}\r\n"
               . "Content-Type: text/html; charset=UTF-8\r\n"
-              . "Content-Transfer-Encoding: 8bit\r\n\r\n"
-              . $escapar($corpoHtml) . "\r\n\r\n"
+              . "Content-Transfer-Encoding: base64\r\n\r\n"
+              . $base64($corpoHtml) . "\r\n"
               . "--{$boundary}--";
 
-    $enviarComando($cabecalhos . "\r\n" . $mensagem . "\r\n.");
-    $respDados = $lerResposta();
+    // Base64 nunca começa linha com "." nem tem LF solto, então não precisa escapar.
+    [$ok, $r] = $passo($cabecalhos . "\r\n\r\n" . $mensagem . "\r\n.", [250]);
+    if (!$ok) { return $abortar('o envio da mensagem', $r); }
 
-    $enviarComando('QUIT');
+    @fwrite($socket, "QUIT\r\n");
     fclose($socket);
 
-    if ($codigo($respDados) !== 250) {
-        return ['success' => false, 'message' => 'Servidor recusou o envio: ' . trim($respDados)];
-    }
-
     return ['success' => true, 'message' => 'E-mail enviado.'];
+}
+
+function smtpFalha(string $mensagem): array
+{
+    error_log('[SMTP] ' . $mensagem);
+    return ['success' => false, 'message' => $mensagem];
 }

@@ -90,6 +90,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'atualiz
         ':from_name' => trim($_POST['smtp_from_name'] ?? '') ?: null,
     ]);
     $sucesso = 'Configurações de e-mail atualizadas.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'testar_smtp') {
+    // Manda um e-mail de teste pro próprio dev e mostra a resposta exata do
+    // servidor SMTP -- sem isso, uma falha de envio só aparecia no log do PHP.
+    require_once __DIR__ . '/../includes/email_smtp.php';
+    $stmtDev = $pdo->prepare('SELECT email FROM dev_usuarios WHERE id_dev_usuario = :id');
+    $stmtDev->execute([':id' => $id_dev_usuario]);
+    $emailTeste = trim((string) ($_POST['email_teste'] ?? '')) ?: (string) $stmtDev->fetchColumn();
+
+    if (!filter_var($emailTeste, FILTER_VALIDATE_EMAIL)) {
+        $erro = 'Informe um e-mail válido pra receber o teste.';
+    } else {
+        $corpoTeste = montarEmailHtmlLoja($pdo, 'Teste de e-mail', ['Se você está lendo isto, o envio de códigos de verificação para os clientes está funcionando.'], '123456');
+        $resultadoTeste = enviarEmailSMTP($pdo, $emailTeste, 'Teste de e-mail — ' . nomeDoSistema($pdo), $corpoTeste);
+        if ($resultadoTeste['success']) {
+            $sucesso = "E-mail de teste enviado para {$emailTeste}. Confira a caixa de entrada e o spam.";
+        } else {
+            $erro = 'O e-mail de teste falhou: ' . $resultadoTeste['message'];
+        }
+    }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'atualizar_caixas') {
     $quantidade = (int) ($_POST['quantidade_caixas'] ?? 0);
     $compartilhados = isset($_POST['caixas_compartilhados']) ? 1 : 0;
@@ -426,6 +445,13 @@ $vinculosAtuais = $pdo->query('SELECT numero_caixa, terminal_id FROM caixa_termi
                 <label>E-mail de envio<input type="email" name="smtp_from_email" value="<?= htmlspecialchars($config['smtp_from_email'] ?? '') ?>"></label>
                 <label>Nome de exibição<input type="text" name="smtp_from_name" value="<?= htmlspecialchars($config['smtp_from_name'] ?? '') ?>" placeholder="Ex: Sua Loja"></label>
                 <button type="submit" class="btn-bloco">Salvar e-mail</button>
+            </form>
+            <form method="post" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--cor-borda);">
+                <input type="hidden" name="acao" value="testar_smtp">
+                <p style="font-size:0.85rem; font-weight:600; margin-bottom:8px;">Testar envio</p>
+                <p style="color:var(--cor-texto-suave); font-size:0.8rem; margin-top:-4px; margin-bottom:12px;">Salve antes de testar. Se falhar, a mensagem mostra exatamente o que o servidor de e-mail respondeu.</p>
+                <label style="font-size:0.8rem;">Enviar para<input type="email" name="email_teste" placeholder="Em branco = seu e-mail de desenvolvedor"></label>
+                <button type="submit" class="btn-outline btn-bloco">Enviar e-mail de teste</button>
             </form>
         </div>
     </div>
