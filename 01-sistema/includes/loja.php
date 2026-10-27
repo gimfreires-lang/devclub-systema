@@ -264,6 +264,61 @@ function clienteVerificado(PDO $pdo, int $id_cliente): bool
     return $whatsappHabilitado && clienteWhatsappVerificado($pdo, $id_cliente);
 }
 
+require_once __DIR__ . '/login_tentativas.php';
+
+const CODIGO_MAX_TENTATIVAS = 5;
+
+/**
+ * Confere o código de 6 dígitos (e-mail ou WhatsApp) com limite de tentativas.
+ * Sem limite, um robô testaria os 1 milhão de números possíveis até acertar e
+ * validaria um contato que não é dele (ou trocaria a senha de outra pessoa,
+ * no "esqueci minha senha"). Na 5ª tentativa errada o código é cancelado e a
+ * conta fica 15 min sem poder conferir código (o contador não zera ao pedir
+ * outro, senão bastaria pedir código novo a cada 5 erros). Por IP vale o
+ * limite geral de login_tentativas.php (20 em 15 min).
+ *
+ * Só confere. Quem chama grava o que muda no acerto (verificado, nova senha...).
+ *
+ * @return array{ok: bool, message: string}
+ */
+function conferirCodigoCliente(PDO $pdo, int $id_cliente, string $tipo, string $digitado): array
+{
+    [$colToken, $colExpira, $reenviar] = $tipo === 'whatsapp'
+        ? ['token_verificacao_whatsapp', 'token_verificacao_whatsapp_expira_em', 'Clique em "Não recebi" pra pedir outro.']
+        : ['token_verificacao_email', 'token_verificacao_expira_em', 'Peça um novo código.'];
+    $chave = $tipo . ':' . $id_cliente;
+
+    $minutos = loginMinutosBloqueado($pdo, $chave, 'codigo', CODIGO_MAX_TENTATIVAS);
+    if ($minutos > 0) {
+        return ['ok' => false, 'message' => "Muitas tentativas com código errado. Por segurança, espere {$minutos} minuto" . ($minutos === 1 ? '' : 's') . ' e peça um novo código.'];
+    }
+
+    // Expiração comparada no SQL (NOW() do MySQL), nunca com time() do PHP.
+    $stmt = $pdo->prepare("SELECT $colToken AS token, ($colExpira > NOW()) AS codigo_valido FROM clientes WHERE id_cliente = :id");
+    $stmt->execute([':id' => $id_cliente]);
+    $atual = $stmt->fetch();
+
+    if (!$atual || empty($atual['token'])) {
+        return ['ok' => false, 'message' => 'Nenhum código pendente. ' . $reenviar];
+    }
+    if (!$atual['codigo_valido']) {
+        return ['ok' => false, 'message' => 'Esse código expirou. ' . $reenviar];
+    }
+
+    $digitado = preg_replace('/\D/', '', $digitado);
+    if (!hash_equals((string) $atual['token'], $digitado)) {
+        loginRegistrarFalha($pdo, $chave, 'codigo');
+        if (loginMinutosBloqueado($pdo, $chave, 'codigo', CODIGO_MAX_TENTATIVAS) > 0) {
+            $pdo->prepare("UPDATE clientes SET $colToken = NULL, $colExpira = NULL WHERE id_cliente = :id")->execute([':id' => $id_cliente]);
+            return ['ok' => false, 'message' => 'Você errou o código ' . CODIGO_MAX_TENTATIVAS . ' vezes e ele foi cancelado por segurança. Espere 15 minutos e peça um novo código.'];
+        }
+        return ['ok' => false, 'message' => 'Código incorreto. Confira e tente de novo.'];
+    }
+
+    loginLimparFalhas($pdo, $chave, 'codigo');
+    return ['ok' => true, 'message' => ''];
+}
+
 /**
  * Gera um código de 6 dígitos (válido por 30min), salva no cliente e manda
  * por e-mail. Chamada tanto no cadastro novo quanto na ativação de conta
@@ -311,6 +366,48 @@ function reenviarCodigoVerificacaoEmail(PDO $pdo, int $id_cliente, string $email
     }
 
     return dispararVerificacaoEmail($pdo, $id_cliente, $email, $nome);
+}
+
+/**
+ * "Esqueci minha senha": gera um código novo de 6 dígitos (30 min) e manda
+ * pro e-mail da conta. Usa a mesma coluna do código de verificação de e-mail
+ * -- os dois provam a mesma coisa (a pessoa tem acesso àquele e-mail), e
+ * acertar qualquer um deles confirma o e-mail.
+ */
+function enviarCodigoRedefinicaoSenha(PDO $pdo, int $id_cliente, string $email, string $nome): array
+{
+    $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $pdo->prepare("UPDATE clientes SET token_verificacao_email = :t, token_verificacao_expira_em = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id_cliente = :id")
+        ->execute([':t' => $codigo, ':id' => $id_cliente]);
+
+    $configLoja = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetch();
+    $nomeLoja = $configLoja['nome_loja'] ?? 'a loja';
+    $primeiroNome = explode(' ', trim($nome))[0];
+
+    $corpo = montarEmailHtmlLoja(
+        $pdo,
+        'Redefinir sua senha',
+        [
+            'Olá, ' . htmlspecialchars($primeiroNome) . '!',
+            'Recebemos um pedido pra criar uma senha nova na <strong>' . htmlspecialchars($nomeLoja) . '</strong>. Digite o código abaixo na tela de redefinição.',
+            'Ele é válido por <strong>30 minutos</strong>. Se não foi você, ignore este e-mail: sua senha continua a mesma.',
+        ],
+        $codigo
+    );
+
+    $resultado = enviarEmailSMTP($pdo, $email, 'Código para redefinir sua senha — ' . $nomeLoja, $corpo);
+    if (!$resultado['success']) {
+        error_log('Falha ao enviar e-mail de redefinição de senha: ' . $resultado['message']);
+    }
+    return $resultado;
+}
+
+/** "gimfreires@gmail.com" -> "gi*******@gmail.com": mostra pra onde foi o código sem expor o e-mail inteiro. */
+function mascararEmail(string $email): string
+{
+    [$usuario, $dominio] = array_pad(explode('@', $email, 2), 2, '');
+    $visivel = mb_substr($usuario, 0, min(2, max(1, mb_strlen($usuario) - 1)));
+    return $visivel . str_repeat('*', max(3, mb_strlen($usuario) - mb_strlen($visivel))) . '@' . $dominio;
 }
 
 function enviarEmailCodigoVerificacao(PDO $pdo, string $email, string $nome, string $codigo): array
