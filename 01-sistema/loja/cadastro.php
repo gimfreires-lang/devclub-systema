@@ -23,6 +23,8 @@ function nomeCompleto(string $nome): bool
 $whatsappLoginHabilitado = whatsappAtivo($pdo);
 
 $erro = '';
+$sucesso = '';
+$emailMascarado = '';
 $etapa = 'email';
 $emailNormalizado = '';
 $identificador = '';
@@ -245,13 +247,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
         $senha = $_POST['senha'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id_cliente, nome, email, email_verificado_em, senha_hash, excluido_em, login_whatsapp_bloqueado FROM clientes WHERE $coluna = :id");
-        $stmt->execute([':id' => $identificador]);
-        $cliente = $stmt->fetch();
+        // Limite de tentativas (5 por conta / 20 por IP em 15 min), o mesmo do
+        // painel do lojista -- sem isso, um robô testaria senhas à vontade.
+        $minutosBloqueado = loginMinutosBloqueado($pdo, $tipoIdentificador . ':' . $identificador, 'loja');
+        if ($minutosBloqueado > 0) {
+            $erro = "Muitas tentativas com senha errada. Tente de novo em {$minutosBloqueado} minuto" . ($minutosBloqueado === 1 ? '' : 's') . ', ou use "Esqueci minha senha".';
+            $etapa = 'login';
+            $cliente = null;
+        } else {
+            $stmt = $pdo->prepare("SELECT id_cliente, nome, email, email_verificado_em, senha_hash, excluido_em, login_whatsapp_bloqueado FROM clientes WHERE $coluna = :id");
+            $stmt->execute([':id' => $identificador]);
+            $cliente = $stmt->fetch();
+        }
 
         // senha_hash pode ser NULL (cliente criado pelo PDV em clientes/novo.php e nunca
         // ativado na loja) — password_verify() com NULL dispara deprecation/warning.
         if ($cliente && $cliente['excluido_em'] === null && !($tipoIdentificador === 'whatsapp' && (int) $cliente['login_whatsapp_bloqueado'] === 1) && $cliente['senha_hash'] !== null && password_verify($senha, $cliente['senha_hash'])) {
+            loginLimparFalhas($pdo, $tipoIdentificador . ':' . $identificador, 'loja');
             $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
             $_SESSION['nome_cliente'] = $cliente['nome'];
             session_regenerate_id(true);
@@ -265,8 +277,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $erro = $tipoIdentificador === 'whatsapp' ? 'WhatsApp ou senha inválidos.' : 'E-mail ou senha inválidos.';
+        if ($minutosBloqueado === 0) {
+            loginRegistrarFalha($pdo, $tipoIdentificador . ':' . $identificador, 'loja');
+            $erro = $tipoIdentificador === 'whatsapp' ? 'WhatsApp ou senha inválidos.' : 'E-mail ou senha inválidos.';
+        }
         $etapa = 'login';
+    } elseif ($acao === 'esqueci_enviar') {
+        // "Esqueci minha senha", passo 1: manda um código pro e-mail da conta.
+        // Funciona também pra quem entra pelo WhatsApp, desde que a conta tenha e-mail.
+        $tipoIdentificador = ($_POST['tipo_identificador'] ?? '') === 'whatsapp' ? 'whatsapp' : 'email';
+        $identificador = trim($_POST['identificador'] ?? '');
+        $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
+
+        $stmt = $pdo->prepare("SELECT id_cliente, nome, email FROM clientes WHERE $coluna = :id AND excluido_em IS NULL AND senha_hash IS NOT NULL");
+        $stmt->execute([':id' => $identificador]);
+        $cliente = $stmt->fetch();
+
+        if (!$cliente) {
+            $erro = 'Não encontramos essa conta. Volte e confira o que digitou.';
+            $etapa = 'email';
+        } elseif (empty($cliente['email'])) {
+            $erro = 'Essa conta não tem e-mail cadastrado pra receber o código. Fale com a loja pelo WhatsApp pra redefinir sua senha.';
+            $etapa = 'login';
+        } elseif (($espera = loginMinutosBloqueado($pdo, 'envio:' . $cliente['id_cliente'], 'reset', 3)) > 0) {
+            // Até 3 envios a cada 15 min por conta: evita lotar a caixa de alguém.
+            $erro = "Já enviamos códigos demais pra essa conta. Confira seu e-mail (e o spam) ou tente de novo em {$espera} minuto" . ($espera === 1 ? '' : 's') . '.';
+            $etapa = 'redefinir';
+            $emailMascarado = mascararEmail($cliente['email']);
+        } else {
+            loginRegistrarFalha($pdo, 'envio:' . $cliente['id_cliente'], 'reset');
+            $envio = enviarCodigoRedefinicaoSenha($pdo, (int) $cliente['id_cliente'], $cliente['email'], $cliente['nome']);
+            $emailMascarado = mascararEmail($cliente['email']);
+            if ($envio['success']) {
+                $sucesso = "Enviamos um código de 6 dígitos para {$emailMascarado}. Confira a caixa de entrada e o spam.";
+            } else {
+                $erro = 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos ou fale com a loja.';
+            }
+            $etapa = 'redefinir';
+        }
+    } elseif ($acao === 'esqueci_redefinir') {
+        // "Esqueci minha senha", passo 2: confere o código e grava a senha nova.
+        $tipoIdentificador = ($_POST['tipo_identificador'] ?? '') === 'whatsapp' ? 'whatsapp' : 'email';
+        $identificador = trim($_POST['identificador'] ?? '');
+        $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
+        $novaSenha = $_POST['senha'] ?? '';
+        $etapa = 'redefinir';
+
+        $stmt = $pdo->prepare("SELECT id_cliente, nome, email FROM clientes WHERE $coluna = :id AND excluido_em IS NULL AND senha_hash IS NOT NULL");
+        $stmt->execute([':id' => $identificador]);
+        $cliente = $stmt->fetch();
+        $emailMascarado = $cliente && $cliente['email'] ? mascararEmail($cliente['email']) : '';
+
+        if (!$cliente || empty($cliente['email'])) {
+            $erro = 'Não encontramos essa conta. Comece de novo.';
+            $etapa = 'email';
+        } elseif (strlen($novaSenha) < 6) {
+            $erro = 'A senha precisa ter pelo menos 6 caracteres.';
+        } else {
+            $conferencia = conferirCodigoCliente($pdo, (int) $cliente['id_cliente'], 'email', (string) ($_POST['codigo'] ?? ''));
+            if (!$conferencia['ok']) {
+                $erro = $conferencia['message'];
+            } else {
+                // O código chegou no e-mail da conta: isso também confirma o e-mail.
+                $pdo->prepare(
+                    'UPDATE clientes SET senha_hash = :senha, email_verificado_em = COALESCE(email_verificado_em, NOW()),
+                            token_verificacao_email = NULL, token_verificacao_expira_em = NULL
+                     WHERE id_cliente = :id'
+                )->execute([':senha' => password_hash($novaSenha, PASSWORD_DEFAULT), ':id' => (int) $cliente['id_cliente']]);
+                loginLimparFalhas($pdo, $tipoIdentificador . ':' . $identificador, 'loja');
+
+                $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
+                $_SESSION['nome_cliente'] = $cliente['nome'];
+                session_regenerate_id(true);
+                header('Location: /loja/index.php');
+                exit;
+            }
+        }
     }
 }
 ?>
@@ -277,6 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php require __DIR__ . '/../includes/loja_header.php'; ?>
     <div class="auth-card">
     <?php if ($erro): ?><p class="alert alert-erro"><?= htmlspecialchars($erro) ?></p><?php endif; ?>
+    <?php if ($sucesso): ?><p class="alert alert-sucesso"><?= htmlspecialchars($sucesso) ?></p><?php endif; ?>
 
     <?php if ($etapa === 'email'): ?>
     <h1>Entrar na loja</h1>
@@ -366,6 +453,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
         <label>Senha<input type="password" name="senha" required></label>
         <button type="submit" class="btn-bloco">Entrar</button>
+    </form>
+    <form method="post" style="text-align:center; margin-top:14px;">
+        <input type="hidden" name="acao" value="esqueci_enviar">
+        <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
+        <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
+        <button type="submit" class="btn-texto" style="padding:0;">Esqueci minha senha</button>
+    </form>
+    <?php elseif ($etapa === 'redefinir'): ?>
+    <h2>Criar nova senha</h2>
+    <?php if ($emailMascarado): ?><p style="color:var(--cor-texto-suave); font-size:0.9rem;">Digite o código que enviamos para <strong><?= htmlspecialchars($emailMascarado) ?></strong> e escolha uma senha nova. O código vale por 30 minutos.</p><?php endif; ?>
+    <form method="post">
+        <input type="hidden" name="acao" value="esqueci_redefinir">
+        <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
+        <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
+        <label>Código<input type="text" name="codigo" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" required></label>
+        <label>Nova senha<input type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+        <button type="submit" class="btn-bloco">Salvar nova senha e entrar</button>
+    </form>
+    <form method="post" style="text-align:center; margin-top:14px;">
+        <input type="hidden" name="acao" value="esqueci_enviar">
+        <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
+        <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
+        <button type="submit" class="btn-texto" style="padding:0;">Não recebi o e-mail, enviar outro código</button>
     </form>
     <?php endif; ?>
     </div>

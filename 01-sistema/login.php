@@ -24,7 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['nome'] = $usuario['nome'];
             $_SESSION['perfil'] = $usuario['perfil'];
             session_regenerate_id(true);
-            header('Location: /dashboard.php');
+            // Só caminhos internos ("/algo", nunca "//site" nem "http..."): evita
+            // que um link malicioso use o login pra mandar a pessoa pra outro site.
+            $voltar = (string) ($_SESSION['voltar_apos_login'] ?? '');
+            unset($_SESSION['voltar_apos_login']);
+            $destino = preg_match('#^/(?![/\\\\])[^\s]*$#', $voltar) && !str_starts_with($voltar, '/login.php') ? $voltar : '/dashboard.php';
+            header('Location: ' . $destino);
             exit;
         }
 
