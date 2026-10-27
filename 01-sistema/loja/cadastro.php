@@ -245,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
         $senha = $_POST['senha'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id_cliente, nome, senha_hash, excluido_em, login_whatsapp_bloqueado FROM clientes WHERE $coluna = :id");
+        $stmt = $pdo->prepare("SELECT id_cliente, nome, email, email_verificado_em, senha_hash, excluido_em, login_whatsapp_bloqueado FROM clientes WHERE $coluna = :id");
         $stmt->execute([':id' => $identificador]);
         $cliente = $stmt->fetch();
 
@@ -255,6 +255,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
             $_SESSION['nome_cliente'] = $cliente['nome'];
             session_regenerate_id(true);
+            // E-mail ainda não confirmado: manda o código já no login. Antes só o
+            // cadastro mandava -- se aquele e-mail falhou ou o código venceu (30 min),
+            // o cliente entrava, via "Enviamos um código" e nada chegava.
+            if (!empty($cliente['email']) && $cliente['email_verificado_em'] === null) {
+                reenviarCodigoVerificacaoEmail($pdo, (int) $cliente['id_cliente'], $cliente['email'], $cliente['nome']);
+            }
             header('Location: /loja/index.php');
             exit;
         }
