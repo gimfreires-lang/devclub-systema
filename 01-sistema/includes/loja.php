@@ -402,6 +402,48 @@ function enviarCodigoRedefinicaoSenha(PDO $pdo, int $id_cliente, string $email, 
     return $resultado;
 }
 
+/** Conta criada no PDV e ainda sem senha (a única que pode ser "ativada"). */
+function buscarClienteParaAtivar(PDO $pdo, string $tipoIdentificador, string $identificador): ?array
+{
+    $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
+    $stmt = $pdo->prepare(
+        "SELECT id_cliente, nome, email, whatsapp FROM clientes
+         WHERE $coluna = :id AND senha_hash IS NULL AND excluido_em IS NULL"
+        . ($coluna === 'whatsapp' ? ' AND login_whatsapp_bloqueado = 0' : '')
+    );
+    $stmt->execute([':id' => $identificador]);
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * Por onde mandar o código de ativação: pelo mesmo contato que a pessoa
+ * digitou, quando dá; senão pelo outro contato da conta. WhatsApp só com a
+ * verificação por WhatsApp ligada. null = sem contato utilizável.
+ *
+ * @return array{tipo: string, destino: string}|null
+ */
+function canalAtivacao(PDO $pdo, array $cliente, string $tipoIdentificador): ?array
+{
+    $temEmail = !empty($cliente['email']);
+    $temWhatsapp = !empty($cliente['whatsapp']) && whatsappAtivo($pdo);
+    $email = $temEmail ? ['tipo' => 'email', 'destino' => mascararEmail($cliente['email'])] : null;
+    $whatsapp = $temWhatsapp ? ['tipo' => 'whatsapp', 'destino' => mascararWhatsapp($cliente['whatsapp'])] : null;
+
+    return $tipoIdentificador === 'whatsapp' ? ($whatsapp ?? $email) : ($email ?? $whatsapp);
+}
+
+/** "45998185568" -> "(45) *****-5568". */
+function mascararWhatsapp(string $whatsapp): string
+{
+    $digitos = preg_replace('/\D/', '', $whatsapp);
+    if (strlen($digitos) > 11 && str_starts_with($digitos, '55')) {
+        $digitos = substr($digitos, 2);
+    }
+    return strlen($digitos) >= 10
+        ? '(' . substr($digitos, 0, 2) . ') *****-' . substr($digitos, -4)
+        : '*****' . substr($digitos, -4);
+}
+
 /** "gimfreires@gmail.com" -> "gi*******@gmail.com": mostra pra onde foi o código sem expor o e-mail inteiro. */
 function mascararEmail(string $email): string
 {
