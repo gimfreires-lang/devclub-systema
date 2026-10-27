@@ -25,6 +25,7 @@ $whatsappLoginHabilitado = whatsappAtivo($pdo);
 $erro = '';
 $sucesso = '';
 $emailMascarado = '';
+$destinoMascarado = '';
 $etapa = 'email';
 $emailNormalizado = '';
 $identificador = '';
@@ -204,41 +205,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-    } elseif ($acao === 'ativar') {
+    } elseif ($acao === 'ativar_enviar' || $acao === 'ativar') {
+        // Conta criada pelo lojista no PDV, ainda sem senha. Antes, quem digitasse o
+        // e-mail/WhatsApp de alguém criava a senha e entrava na conta dele (vendo
+        // débitos e pedidos). Agora só cria a senha quem recebe o código no contato
+        // cadastrado: ativar_enviar manda o código, ativar confere e grava a senha.
         $tipoIdentificador = ($_POST['tipo_identificador'] ?? '') === 'whatsapp' ? 'whatsapp' : 'email';
         $identificador = trim($_POST['identificador'] ?? '');
-        $coluna = $tipoIdentificador === 'whatsapp' ? 'whatsapp' : 'email';
-        $senha = $_POST['senha'] ?? '';
+        $cliente = buscarClienteParaAtivar($pdo, $tipoIdentificador, $identificador);
+        $canal = $cliente ? canalAtivacao($pdo, $cliente, $tipoIdentificador) : null;
+        $destinoMascarado = $canal ? $canal['destino'] : '';
 
-        if (strlen($senha) < 6) {
-            $erro = 'A senha precisa ter pelo menos 6 caracteres.';
-            $etapa = 'ativar';
-        } else {
-            $hash = password_hash($senha, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE clientes SET senha_hash = :senha WHERE $coluna = :id AND senha_hash IS NULL AND excluido_em IS NULL" . ($coluna === 'whatsapp' ? ' AND login_whatsapp_bloqueado = 0' : ''));
-            $stmt->execute([':senha' => $hash, ':id' => $identificador]);
-
-            // Only proceed if the update actually affected a row (passwordless account)
-            if ($stmt->rowCount() > 0) {
-                $stmtC = $pdo->prepare("SELECT id_cliente, nome, email FROM clientes WHERE $coluna = :id");
-                $stmtC->execute([':id' => $identificador]);
-                $cliente = $stmtC->fetch();
-
-                $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
-                $_SESSION['nome_cliente'] = $cliente['nome'];
-                session_regenerate_id(true);
-                // Esse e-mail/WhatsApp foi digitado pelo lojista no PDV, nunca confirmado
-                // pelo próprio dono da conta -- mesma regra do cadastro novo. Só dispara
-                // se o cadastro tiver e-mail (cliente do PDV pode não ter informado).
-                if (!empty($cliente['email'])) {
-                    dispararVerificacaoEmail($pdo, (int) $cliente['id_cliente'], $cliente['email'], $cliente['nome']);
-                }
-                header('Location: /loja/index.php');
-                exit;
+        if (!$cliente) {
+            $erro = 'Não foi possível ativar a conta. Verifique os dados.';
+            $etapa = 'email';
+        } elseif (!$canal) {
+            $etapa = 'ativar'; // a tela 'ativar' já explica que precisa falar com a loja
+        } elseif ($acao === 'ativar_enviar') {
+            $etapa = 'ativar_codigo';
+            $chaveEnvio = 'envio:' . $cliente['id_cliente'];
+            if (($espera = loginMinutosBloqueado($pdo, $chaveEnvio, 'reset', 3)) > 0) {
+                $erro = "Já enviamos códigos demais pra essa conta. Confira o código recebido ou tente de novo em {$espera} minuto" . ($espera === 1 ? '' : 's') . '.';
             } else {
-                // Account either doesn't exist or already has a password
-                $erro = 'Não foi possível ativar a conta. Verifique os dados.';
-                $etapa = 'email';
+                loginRegistrarFalha($pdo, $chaveEnvio, 'reset');
+                $envio = $canal['tipo'] === 'whatsapp'
+                    ? reenviarCodigoVerificacaoWhatsapp($pdo, (int) $cliente['id_cliente'], $cliente['whatsapp'], $cliente['nome'])
+                    : reenviarCodigoVerificacaoEmail($pdo, (int) $cliente['id_cliente'], $cliente['email'], $cliente['nome']);
+                if ($envio['success']) {
+                    $sucesso = 'Enviamos um código de 6 dígitos para ' . $destinoMascarado . '.' . ($canal['tipo'] === 'email' ? ' Confira a caixa de entrada e o spam.' : '');
+                } else {
+                    $erro = $canal['tipo'] === 'whatsapp' && str_starts_with((string) $envio['message'], 'Espera')
+                        ? $envio['message']
+                        : 'Não conseguimos enviar o código agora. Tente de novo em alguns minutos ou fale com a loja.';
+                }
+            }
+        } else {
+            $etapa = 'ativar_codigo';
+            $senha = $_POST['senha'] ?? '';
+            if (strlen($senha) < 6) {
+                $erro = 'A senha precisa ter pelo menos 6 caracteres.';
+            } else {
+                $conferencia = conferirCodigoCliente($pdo, (int) $cliente['id_cliente'], $canal['tipo'], (string) ($_POST['codigo'] ?? ''));
+                if (!$conferencia['ok']) {
+                    $erro = $conferencia['message'];
+                } else {
+                    // O código provou que o contato é dele: já fica verificado (carrinho liberado).
+                    $marcarVerificado = $canal['tipo'] === 'whatsapp'
+                        ? 'whatsapp_verificado_em = COALESCE(whatsapp_verificado_em, NOW()), token_verificacao_whatsapp = NULL, token_verificacao_whatsapp_expira_em = NULL'
+                        : 'email_verificado_em = COALESCE(email_verificado_em, NOW()), token_verificacao_email = NULL, token_verificacao_expira_em = NULL';
+                    $stmt = $pdo->prepare("UPDATE clientes SET senha_hash = :senha, $marcarVerificado WHERE id_cliente = :id AND senha_hash IS NULL AND excluido_em IS NULL");
+                    $stmt->execute([':senha' => password_hash($senha, PASSWORD_DEFAULT), ':id' => (int) $cliente['id_cliente']]);
+
+                    if ($stmt->rowCount() > 0) {
+                        $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
+                        $_SESSION['nome_cliente'] = $cliente['nome'];
+                        session_regenerate_id(true);
+                        header('Location: /loja/index.php');
+                        exit;
+                    }
+                    $erro = 'Não foi possível ativar a conta. Verifique os dados.';
+                    $etapa = 'email';
+                }
             }
         }
     } elseif ($acao === 'login') {
@@ -436,14 +463,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     });
     </script>
     <?php elseif ($etapa === 'ativar'): ?>
+    <?php
+    $clienteAtivar = $clienteAtivar ?? buscarClienteParaAtivar($pdo, $tipoIdentificador, $identificador);
+    $canalAtivar = $clienteAtivar ? canalAtivacao($pdo, $clienteAtivar, $tipoIdentificador) : null;
+    ?>
     <h2>Ativar minha conta</h2>
-    <p>Encontramos seu cadastro. Crie uma senha pra acessar a loja online.</p>
+    <?php if ($canalAtivar): ?>
+    <p>Encontramos seu cadastro. Pra confirmar que a conta é sua, vamos mandar um código de 6 dígitos para <strong><?= htmlspecialchars($canalAtivar['destino']) ?></strong>.</p>
+    <form method="post">
+        <input type="hidden" name="acao" value="ativar_enviar">
+        <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
+        <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
+        <button type="submit" class="btn-bloco">Enviar código</button>
+    </form>
+    <?php else: ?>
+    <p>Encontramos seu cadastro, mas ele não tem um contato que a gente consiga usar pra confirmar que é você. Fale com a loja pelo WhatsApp pra ativar seu acesso.</p>
+    <?php endif; ?>
+    <?php elseif ($etapa === 'ativar_codigo'): ?>
+    <h2>Ativar minha conta</h2>
+    <?php if ($destinoMascarado): ?><p style="color:var(--cor-texto-suave); font-size:0.9rem;">Digite o código enviado para <strong><?= htmlspecialchars($destinoMascarado) ?></strong> e crie sua senha. O código vale por 30 minutos.</p><?php endif; ?>
     <form method="post">
         <input type="hidden" name="acao" value="ativar">
         <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
         <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
-        <label>Crie uma senha<input type="password" name="senha" required minlength="6"></label>
-        <button type="submit" class="btn-bloco">Ativar</button>
+        <label>Código<input type="text" name="codigo" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" required></label>
+        <label>Crie uma senha<input type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+        <button type="submit" class="btn-bloco">Ativar e entrar</button>
+    </form>
+    <form method="post" style="text-align:center; margin-top:14px;">
+        <input type="hidden" name="acao" value="ativar_enviar">
+        <input type="hidden" name="identificador" value="<?= htmlspecialchars($identificador) ?>">
+        <input type="hidden" name="tipo_identificador" value="<?= htmlspecialchars($tipoIdentificador) ?>">
+        <button type="submit" class="btn-texto" style="padding:0;">Não recebi, enviar outro código</button>
     </form>
     <?php elseif ($etapa === 'login'): ?>
     <h2>Entrar</h2>
