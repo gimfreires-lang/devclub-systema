@@ -216,7 +216,8 @@ if (!empty($listaRelacionados)) {
     <span class="produto-categoria"><?= htmlspecialchars($produto['categoria']) ?></span>
     <h1><?= htmlspecialchars($produto['nome']) ?></h1>
     <p><?= nl2br(htmlspecialchars($produto['descricao'] ?? '')) ?></p>
-    <p class="produto-preco">R$ <?= number_format($produto['preco_base'], 2, ',', '.') ?></p>
+    <?php $unidadeProduto = unidadeVendaProduto($produto); ?>
+    <p class="produto-preco">R$ <?= number_format($produto['preco_base'], 2, ',', '.') ?><?php if ($unidadeProduto === 'kg'): ?> <small style="font-size:0.55em; font-weight:500;">/ kg</small><?php endif; ?></p>
     <div style="display:flex; gap:10px; align-items:center; margin:4px 0 14px; flex-wrap:wrap;">
         <a href="<?= htmlspecialchars($linkCompartilharWhatsapp) ?>" target="_blank" rel="noopener" class="btn-compartilhar-whatsapp" style="margin:0;">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.44 9.9-9.9 0-2.64-1.03-5.12-2.9-6.98A9.82 9.82 0 0 0 12.04 2Zm0 1.67c2.19 0 4.25.85 5.8 2.4a8.2 8.2 0 0 1 2.4 5.83c0 4.54-3.7 8.23-8.24 8.23a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.37c0-4.54 3.7-8.23 8.24-8.23h.04Zm-4.6 4.2c-.16 0-.42.06-.64.31-.22.25-.85.83-.85 2.02s.87 2.35.99 2.51c.12.16 1.7 2.7 4.2 3.68 2.07.82 2.49.66 2.94.62.45-.04 1.45-.59 1.65-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28-.24-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.24-.63.8-.77.96-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.35-.76-1.85-.2-.48-.4-.42-.55-.42Z"/></svg>
@@ -242,7 +243,7 @@ if (!empty($listaRelacionados)) {
         <?php endif; ?>
     </div>
     <?php if (!$semControleEstoque && $disponivelTotal > 0): ?>
-    <p class="disponibilidade<?= $disponivelTotal <= 3 ? ' disponibilidade-baixa' : '' ?>"><?= $disponivelTotal ?> <?= $disponivelTotal === 1 ? 'unidade disponível' : 'unidades disponíveis' ?></p>
+    <p class="disponibilidade<?= $disponivelTotal <= 3 ? ' disponibilidade-baixa' : '' ?>"><?= textoDisponibilidade((int) $disponivelTotal, $unidadeProduto) ?></p>
     <?php endif; ?>
 
     <?php if ($reservadoEmCarrinho): ?>
@@ -252,7 +253,8 @@ if (!empty($listaRelacionados)) {
     <?php endif; ?>
 
     <?php if (empty($_SESSION['id_cliente'])): ?>
-        <a href="/loja/cadastro.php" class="btn btn-lg btn-bloco">Entrar ou cadastrar pra comprar</a>
+        <a href="/loja/cadastro.php?voltar=<?= urlencode('/loja/produto.php?id=' . $id_produto) ?>" class="btn btn-lg btn-bloco">Entrar ou cadastrar pra comprar</a>
+        <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin-top:8px; text-align:center;">Leva menos de 1 minuto. Depois você volta direto para este produto.</p>
     <?php elseif (empty($listaCombinacoes)): ?>
         <?php // Mensagem de indisponibilidade já mostrada acima. ?>
     <?php else: ?>

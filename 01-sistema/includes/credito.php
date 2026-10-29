@@ -77,7 +77,16 @@ function processarWebhookDivida(PDO $pdo, int $id_movimento, array $pagamento, s
     $stmt->execute([':id' => $id_movimento]);
     $movimento = $stmt->fetch();
 
-    if (!$movimento || $movimento['status'] !== 'Pendente') {
+    if (!$movimento) {
+        return;
+    }
+
+    // Pagamento aprovado confirma o movimento mesmo que ele tenha sido marcado
+    // 'Cancelado' antes -- por expirar (expirarPagamentosDividaAbandonados()) ou
+    // por uma tentativa recusada do mesmo link. O dinheiro entrou de verdade, então
+    // a dívida precisa ser abatida; antes disso o pagamento sumia sem baixar nada.
+    $statusAceitos = $statusPagamento === 'approved' ? ['Pendente', 'Cancelado'] : ['Pendente'];
+    if (!in_array($movimento['status'], $statusAceitos, true)) {
         return;
     }
 
@@ -96,19 +105,24 @@ function processarWebhookDivida(PDO $pdo, int $id_movimento, array $pagamento, s
         try {
             $confirmou = $pdo->prepare(
                 "UPDATE movimentos_credito SET status = 'Confirmado', id_pagamento_mp = :idmp
-                 WHERE id_movimento = :id AND status = 'Pendente'"
+                 WHERE id_movimento = :id AND status IN ('Pendente', 'Cancelado')"
             );
             $confirmou->execute([':idmp' => $dataId, ':id' => $id_movimento]);
 
             if ($confirmou->rowCount() > 0) {
-                $abateu = $pdo->prepare(
-                    'UPDATE clientes SET saldo_devedor = GREATEST(0, saldo_devedor - :valor)
-                     WHERE id_cliente = :id AND saldo_devedor >= :valor2'
-                );
-                $abateu->execute([':valor' => $movimento['valor'], ':valor2' => $movimento['valor'], ':id' => $movimento['id_cliente']]);
+                // Antes havia "AND saldo_devedor >= valor" aqui: se o lojista tivesse
+                // baixado parte da dívida à mão nesse meio-tempo, o UPDATE não pegava
+                // nenhuma linha e o pagamento recebido não abatia NADA. O GREATEST(0, ...)
+                // já impede saldo negativo; o excedente fica registrado no log.
+                $stmtSaldo = $pdo->prepare('SELECT saldo_devedor FROM clientes WHERE id_cliente = :id FOR UPDATE');
+                $stmtSaldo->execute([':id' => $movimento['id_cliente']]);
+                $saldoAntes = (float) $stmtSaldo->fetchColumn();
 
-                if ($abateu->rowCount() === 0) {
-                    error_log('Webhook divida MP: saldo_devedor já estava abaixo do valor confirmado (id_movimento=' . $id_movimento . ', valor=' . $movimento['valor'] . ')');
+                $pdo->prepare('UPDATE clientes SET saldo_devedor = GREATEST(0, saldo_devedor - :valor) WHERE id_cliente = :id')
+                    ->execute([':valor' => $movimento['valor'], ':id' => $movimento['id_cliente']]);
+
+                if ($saldoAntes + 0.01 < (float) $movimento['valor']) {
+                    error_log('Webhook divida MP: cliente pagou ' . $movimento['valor'] . ' mas devia só ' . $saldoAntes . ' (id_movimento=' . $id_movimento . ') -- conferir se precisa devolver a diferença.');
                 }
             }
 
@@ -125,4 +139,32 @@ function processarWebhookDivida(PDO $pdo, int $id_movimento, array $pagamento, s
              WHERE id_movimento = :id AND status = 'Pendente'"
         )->execute([':idmp' => $dataId, ':id' => $id_movimento]);
     }
+}
+
+
+/**
+ * Prazo (em minutos) que um pagamento de dívida gerado pelo Mercado Pago (link
+ * da loja ou Pix do painel) fica "Pendente" esperando o cliente pagar.
+ */
+const PRAZO_PAGAMENTO_DIVIDA_MINUTOS = 60;
+
+/**
+ * Marca como 'Cancelado' os pagamentos de dívida que ficaram 'Pendente' além do
+ * prazo (cliente abriu o link e desistiu). Sem isso eles ficavam pendentes pra
+ * sempre e travavam a tela "Minha dívida": o valor pendente era descontado do
+ * que o cliente podia pagar e ele não conseguia gerar um novo link. Se o
+ * pagamento acabar sendo aprovado depois, processarWebhookDivida() confirma
+ * mesmo assim.
+ */
+function expirarPagamentosDividaAbandonados(PDO $pdo, ?int $id_cliente = null): void
+{
+    $sql = "UPDATE movimentos_credito SET status = 'Cancelado'
+            WHERE tipo = 'pagamento' AND status = 'Pendente'
+              AND data_movimento < DATE_SUB(NOW(), INTERVAL " . (int) PRAZO_PAGAMENTO_DIVIDA_MINUTOS . " MINUTE)";
+    $params = [];
+    if ($id_cliente !== null) {
+        $sql .= ' AND id_cliente = :ic';
+        $params[':ic'] = $id_cliente;
+    }
+    $pdo->prepare($sql)->execute($params);
 }

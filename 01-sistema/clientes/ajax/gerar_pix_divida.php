@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
+require_once __DIR__ . '/../../includes/credito.php';
 exigirLogin();
 header('Content-Type: application/json');
 
@@ -49,8 +50,14 @@ $payload = [
     // (erro real confirmado em produção) -- application_fee é o único campo
     // correto aqui.
     'application_fee' => $application_fee,
-    'sponsor_id' => 194420711,
+    'sponsor_id' => (int) MP_SPONSOR_ID,
+    // Pix vence junto com o movimento 'Pendente' (ver credito.php).
+    'date_of_expiration' => (new DateTime('+' . PRAZO_PAGAMENTO_DIVIDA_MINUTOS . ' minutes'))->format('Y-m-d\TH:i:s.vP'),
 ];
+
+if (mpMesmaContaDoIntegrador($config)) {
+    unset($payload['application_fee'], $payload['sponsor_id']);
+}
 
 try {
     $resposta = mpChamarApi('POST', 'https://api.mercadopago.com/v1/payments', $payload, $config['mp_access_token'], [

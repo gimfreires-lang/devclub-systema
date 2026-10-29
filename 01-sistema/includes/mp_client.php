@@ -36,6 +36,33 @@ function mpTaxaMarketplace(PDO $pdo): float
     return $taxa !== false && $taxa !== null ? (float) $taxa : 1.0;
 }
 
+/** Conta Mercado Pago do integrador (desenvolvedor) -- vai como sponsor_id. */
+const MP_SPONSOR_ID = '194420711';
+
+/**
+ * true quando a loja conectou a MESMA conta do integrador (comum nos testes do
+ * próprio desenvolvedor). Nesse caso o Mercado Pago pode recusar o pagamento
+ * se for mandado sponsor_id/taxa de marketplace (a conta não pode patrocinar
+ * nem cobrar taxa de si mesma), então esses campos saem do pedido.
+ */
+function mpMesmaContaDoIntegrador(?array $config): bool
+{
+    return $config !== null && (string) ($config['mp_user_id'] ?? '') === MP_SPONSOR_ID;
+}
+
+/**
+ * Nome que aparece na fatura do cartão do cliente (statement_descriptor).
+ * O Mercado Pago aceita até 22 caracteres, só letras, números e espaço -- sem
+ * isso a fatura mostra só "MERCADOPAGO" e o cliente não reconhece a compra,
+ * o que vira contestação (chargeback).
+ */
+function mpDescricaoFatura(string $nomeLoja): string
+{
+    $semAcento = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nomeLoja) ?: $nomeLoja;
+    $limpo = trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Za-z0-9 ]/', '', $semAcento)));
+    return strtoupper(substr($limpo !== '' ? $limpo : 'LOJA', 0, 22));
+}
+
 /**
  * Chamada genérica à API do Mercado Pago. $metodo é 'GET', 'POST' ou 'PUT'.
  */

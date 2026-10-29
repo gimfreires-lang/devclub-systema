@@ -19,6 +19,10 @@ if (!$id_venda) {
     exit;
 }
 
+$stmtCliente = $pdo->prepare('SELECT nome, email FROM clientes WHERE id_cliente = :id');
+$stmtCliente->execute([':id' => $id_cliente]);
+$cliente = $stmtCliente->fetch() ?: [];
+
 $id_entrega = (int) ($_POST['id_entrega'] ?? 0);
 $endereco = trim($_POST['endereco'] ?? '');
 
@@ -114,7 +118,7 @@ $preference = [
     // /checkout/preferences seja mais tolerante. marketplace_fee é o único
     // campo documentado como correto aqui.
     'marketplace_fee' => $application_fee,
-    'sponsor_id' => 194420711,
+    'sponsor_id' => (int) MP_SPONSOR_ID,
     // A loja online aceita só Pix e cartão. Boleto ('ticket') fica de fora porque leva de 1 a 3
     // dias pra compensar, incompatível com o prazo de reserva do carrinho (15 minutos).
     'excluded_payment_types' => [
@@ -123,7 +127,24 @@ $preference = [
     'expires' => true,
     'expiration_date_from' => $agora->format(DateTime::ATOM),
     'expiration_date_to' => $expiraEm->format(DateTime::ATOM),
+    // expiration_date_to só fecha o LINK do checkout. O Pix gerado lá dentro tem
+    // validade própria (24 h por padrão) -- sem date_of_expiration o cliente podia
+    // pagar muito depois de o pedido já ter sido cancelado e o estoque devolvido.
+    'date_of_expiration' => $expiraEm->format('Y-m-d\TH:i:s.vP'),
+    // Nome da loja na fatura do cartão (em vez de só "MERCADOPAGO"): menos
+    // estranhamento do cliente e menos contestação.
+    'statement_descriptor' => mpDescricaoFatura((string) ($pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Clube da Cerveja')),
+    // Dados do comprador já logado: o Mercado Pago usa na análise antifraude
+    // (mais cartões aprovados) e já deixa o e-mail preenchido no checkout.
+    'payer' => array_filter([
+        'name' => $cliente['nome'] ?? null,
+        'email' => !empty($cliente['email']) ? $cliente['email'] : null,
+    ]),
 ];
+
+if (mpMesmaContaDoIntegrador($config)) {
+    unset($preference['marketplace_fee'], $preference['sponsor_id']);
+}
 
 try {
     $resposta = mpChamarApi('POST', 'https://api.mercadopago.com/checkout/preferences', $preference, $config['mp_access_token']);
