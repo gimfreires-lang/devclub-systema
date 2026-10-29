@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const div = document.getElementById('pix-divida-resultado');
             div.innerHTML = '';
             const img = document.createElement('img');
-            img.src = 'data:image/png;base64,' + data.qr_code_base64;
+            if (data.qr_code_base64) { img.src = 'data:image/png;base64,' + data.qr_code_base64; } else { img.hidden = true; }
             img.width = 200;
             div.appendChild(img);
             const textarea = document.createElement('textarea');

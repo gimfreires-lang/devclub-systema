@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/caixa.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirLogin();
 header('Content-Type: application/json');
 
@@ -23,6 +24,20 @@ if ($venda['status'] === 'Pago') {
 
 if (empty($venda['id_pagamento_mp'])) {
     echo json_encode(['success' => true, 'aprovado' => false]);
+    exit;
+}
+
+// Pix do Bradesco: consulta o banco; a confirmação finaliza a venda pelo mesmo
+// caminho do webhook (processarWebhookVendaCaixa).
+if (bradescoCobrancaPorTxid($pdo, (string) $venda['id_pagamento_mp'])) {
+    try {
+        bradescoConsultarEConfirmar($pdo, (string) $venda['id_pagamento_mp'], 3);
+        $stmt->execute([':id' => $id_venda, ':iu' => $_SESSION['id_usuario']]);
+        $aprovado = ($stmt->fetch()['status'] ?? '') === 'Pago';
+        echo json_encode(['success' => true, 'aprovado' => $aprovado, 'redirect' => $aprovado ? '/caixa/comprovante.php?id_venda=' . $id_venda . '&novo=1' : null]);
+    } catch (Throwable $e) {
+        echo json_encode(['success' => false, 'aprovado' => false, 'message' => $e->getMessage()]);
+    }
     exit;
 }
 

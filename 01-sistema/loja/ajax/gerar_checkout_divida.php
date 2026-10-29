@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth_cliente.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
 require_once __DIR__ . '/../../includes/credito.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirClienteLogado();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -35,6 +36,26 @@ $disponivelParaPagar = $saldoDevedor - $totalPendente;
 
 if ($valor <= 0 || $valor > $disponivelParaPagar + 0.01) {
     header('Location: /loja/minha_divida.php?erro=' . urlencode('Valor inválido, ou você já tem um pagamento pendente de confirmação que cobre parte dessa dívida.'));
+    exit;
+}
+
+// ---- Pix direto no Bradesco (Configurações → Pix Bradesco) ----
+if (provedorPix($pdo) === 'bradesco') {
+    $pdo->prepare(
+        "INSERT INTO movimentos_credito (id_cliente, tipo, status, valor, forma_pagamento)
+         VALUES (:ic, 'pagamento', 'Pendente', :valor, 'Pix Bradesco')"
+    )->execute([':ic' => $id_cliente, ':valor' => $valor]);
+    $id_movimento = (int) $pdo->lastInsertId();
+    try {
+        $cobranca = bradescoCriarCobranca($pdo, 'divida', $id_movimento, $valor, PRAZO_PAGAMENTO_DIVIDA_MINUTOS * 60, 'Pagamento de conta - ' . ($clienteDivida['nome'] ?? ''));
+    } catch (Throwable $e) {
+        $pdo->prepare("UPDATE movimentos_credito SET status = 'Cancelado' WHERE id_movimento = :id AND status = 'Pendente'")->execute([':id' => $id_movimento]);
+        error_log('Dívida Bradesco cliente ' . $id_cliente . ': ' . $e->getMessage());
+        header('Location: /loja/minha_divida.php?erro=' . urlencode('Não foi possível gerar o Pix agora. Tente novamente em instantes.'));
+        exit;
+    }
+    $pdo->prepare('UPDATE movimentos_credito SET id_pagamento_mp = :t WHERE id_movimento = :id')->execute([':t' => $cobranca['txid'], ':id' => $id_movimento]);
+    header('Location: /loja/pagar_pix.php?id_movimento=' . $id_movimento);
     exit;
 }
 

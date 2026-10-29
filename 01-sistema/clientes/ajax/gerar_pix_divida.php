@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
 require_once __DIR__ . '/../../includes/credito.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirLogin();
 header('Content-Type: application/json');
 
@@ -20,6 +21,23 @@ if (!$cliente) {
 
 if ($valor <= 0 || $valor > (float) $cliente['saldo_devedor'] + 0.01) {
     echo json_encode(['success' => false, 'message' => 'Valor inválido — não pode passar da dívida atual.']);
+    exit;
+}
+
+// ---- Pix direto no Bradesco (Configurações → Pix Bradesco) ----
+if (provedorPix($pdo) === 'bradesco') {
+    $pdo->prepare("INSERT INTO movimentos_credito (id_cliente, tipo, status, valor, forma_pagamento, criado_por) VALUES (:ic, 'pagamento', 'Pendente', :valor, 'Pix Bradesco', :criado_por)")
+        ->execute([':ic' => $id_cliente, ':valor' => $valor, ':criado_por' => (int) $_SESSION['id_usuario']]);
+    $id_movimento = (int) $pdo->lastInsertId();
+    try {
+        $cobranca = bradescoCriarCobranca($pdo, 'divida', $id_movimento, $valor, PRAZO_PAGAMENTO_DIVIDA_MINUTOS * 60, 'Pagamento de conta - ' . $cliente['nome']);
+    } catch (Throwable $e) {
+        $pdo->prepare("UPDATE movimentos_credito SET status = 'Cancelado' WHERE id_movimento = :id AND status = 'Pendente'")->execute([':id' => $id_movimento]);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+    $pdo->prepare('UPDATE movimentos_credito SET id_pagamento_mp = :t WHERE id_movimento = :id')->execute([':t' => $cobranca['txid'], ':id' => $id_movimento]);
+    echo json_encode(['success' => true, 'id_movimento' => $id_movimento, 'qr_code_base64' => $cobranca['qr_code_base64'], 'qr_code' => $cobranca['qr_code']]);
     exit;
 }
 

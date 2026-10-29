@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirLogin();
 header('Content-Type: application/json');
 
@@ -12,6 +13,19 @@ $venda = $stmt->fetch();
 
 if (!$venda) {
     echo json_encode(['success' => false, 'message' => 'Venda não encontrada ou já finalizada.']);
+    exit;
+}
+
+// ---- Pix direto no Bradesco (Configurações → Pix Bradesco) ----
+if (provedorPix($pdo) === 'bradesco') {
+    try {
+        $cobranca = bradescoCriarCobranca($pdo, 'venda', $id_venda, (float) $venda['valor_total'], 30 * 60, 'Venda #' . $id_venda);
+    } catch (Throwable $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+    $pdo->prepare('UPDATE vendas SET id_pagamento_mp = :id WHERE id_venda = :iv')->execute([':id' => $cobranca['txid'], ':iv' => $id_venda]);
+    echo json_encode(['success' => true, 'id_pagamento_mp' => $cobranca['txid'], 'qr_code_base64' => $cobranca['qr_code_base64'], 'qr_code' => $cobranca['qr_code']]);
     exit;
 }
 

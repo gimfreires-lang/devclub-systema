@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../includes/auth_cliente.php';
 require_once __DIR__ . '/../../includes/loja.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
 require_once __DIR__ . '/../../includes/caixa.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirClienteLogado();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -71,6 +72,30 @@ if (!empty($entrega['superfrete'])) {
 }
 
 $valorTotalComEntrega = definirEntregaDaVenda($pdo, $id_venda, $entrega);
+
+// ---- Pix direto no Bradesco (Configurações → Pix Bradesco) ----
+// Mesmo prazo de pagamento do Mercado Pago; o pedido fica "Aguardando pagamento"
+// e a confirmação passa por processarWebhookVendaLoja(), igual ao MP.
+if (provedorPix($pdo) === 'bradesco') {
+    $prazoPagamentoMinutos = max(1, (int) $pdo->query('SELECT prazo_pagamento_minutos FROM config_loja WHERE id_config = 1')->fetchColumn());
+    $nomeLoja = (string) ($pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')->fetchColumn() ?: 'Clube da Cerveja');
+    try {
+        $cobranca = bradescoCriarCobranca($pdo, 'loja', $id_venda, $valorTotalComEntrega, $prazoPagamentoMinutos * 60, 'Pedido #' . $id_venda . ' - ' . $nomeLoja);
+    } catch (Throwable $e) {
+        error_log('Checkout Bradesco venda ' . $id_venda . ': ' . $e->getMessage());
+        header('Location: /loja/checkout.php?erro=' . urlencode('Não foi possível gerar o Pix agora. Tente novamente em instantes.'));
+        exit;
+    }
+    $pdo->prepare('UPDATE vendas SET id_pagamento_mp = :txid, pagamento_expira_em = :exp, link_pagamento_mp = :link WHERE id_venda = :iv')
+        ->execute([
+            ':txid' => $cobranca['txid'],
+            ':exp' => date('Y-m-d H:i:s', time() + $prazoPagamentoMinutos * 60),
+            ':link' => '/loja/pagar_pix.php?id_venda=' . $id_venda,
+            ':iv' => $id_venda,
+        ]);
+    header('Location: /loja/pagar_pix.php?id_venda=' . $id_venda);
+    exit;
+}
 
 $config = mpConfig($pdo);
 if (!$config || empty($config['mp_access_token'])) {

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/loja.php';
 require_once __DIR__ . '/../includes/superfrete.php';
+require_once __DIR__ . '/../includes/bradesco_pix.php';
 exigirClienteLogado();
 
 liberarReservasExpiradas($pdo);
@@ -64,6 +65,7 @@ $stmtItensSubtotal->execute([':id' => $id_venda]);
 $itensSubtotal = (float) $stmtItensSubtotal->fetchColumn();
 
 $erro = $_GET['erro'] ?? '';
+$pixBradesco = provedorPix($pdo) === 'bradesco';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -132,11 +134,15 @@ $erro = $_GET['erro'] ?? '';
                 </div>
                 <button type="submit" formaction="/loja/ajax/gerar_checkout.php" class="btn-lg btn-bloco">
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10V8a6 6 0 1 1 12 0v2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1Zm2 0h8V8a4 4 0 1 0-8 0v2Z"/></svg>
-                    Pagar com Mercado Pago
+                    <?= $pixBradesco ? 'Pagar com Pix' : 'Pagar com Mercado Pago' ?>
                 </button>
                 <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin:8px 0 0; text-align:center;">
+                    <?php if ($pixBradesco): ?>
+                    Você recebe o QR Code e o código "copia e cola". A confirmação é automática, na hora.
+                    <?php else: ?>
                     Pix (aprovado na hora) ou cartão, no ambiente seguro do Mercado Pago.
                     Nenhum dado do seu cartão fica salvo na loja.
+                    <?php endif; ?>
                 </p>
 
                 <?php if ($temLimiteCredito): ?>

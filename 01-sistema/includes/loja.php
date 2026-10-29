@@ -743,7 +743,7 @@ function registrarPagamentoSemPedido(PDO $pdo, int $id_venda, array $pagamento, 
  * chamado pelo endpoint único em integracoes/mercado_pago/webhook.php quando
  * o external_reference do pagamento começa com "loja_".
  */
-function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, string $dataId): void
+function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, string $dataId, string $formaPagamento = 'Mercado Pago'): void
 {
     $statusPagamento = $pagamento['status'] ?? null;
 
@@ -772,7 +772,7 @@ function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, st
 
         if ($venda && $venda['status'] === 'Reservado') {
             $valorPago = (float) ($pagamento['transaction_amount'] ?? 0);
-            $resultado = finalizarVenda($pdo, $id_venda, [['forma' => 'Mercado Pago', 'valor' => $valorPago]], $dataId);
+            $resultado = finalizarVenda($pdo, $id_venda, [['forma' => $formaPagamento, 'valor' => $valorPago]], $dataId);
 
             if (!$resultado['success']) {
                 error_log('Webhook loja MP: falha ao finalizar venda ' . $id_venda . ': ' . $resultado['message']);
