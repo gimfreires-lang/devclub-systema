@@ -63,6 +63,7 @@ $erro = $_GET['erro'] ?? '';
         <p>Acompanhe seu saldo e pague com segurança quando quiser.</p>
     </div>
     <?php if ($erro): ?><p class="alert alert-erro"><?= htmlspecialchars($erro) ?></p><?php endif; ?>
+    <?php if (isset($_GET['pago'])): ?><p class="alert alert-sucesso">Pagamento confirmado! Obrigado.</p><?php endif; ?>
 
     <div class="layout-colunas">
         <div>

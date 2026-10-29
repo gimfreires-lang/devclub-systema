@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/credito.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
+require_once __DIR__ . '/../../includes/bradesco_pix.php';
 exigirLogin();
 header('Content-Type: application/json');
 
@@ -23,6 +24,17 @@ if ($movimento['status'] === 'Confirmado') {
 
 if (empty($movimento['id_pagamento_mp'])) {
     echo json_encode(['success' => true, 'aprovado' => false]);
+    exit;
+}
+
+// Pix do Bradesco: consulta o banco e confirma pelo mesmo caminho do MP.
+if (bradescoCobrancaPorTxid($pdo, (string) $movimento['id_pagamento_mp'])) {
+    try {
+        $pago = bradescoConsultarEConfirmar($pdo, (string) $movimento['id_pagamento_mp'], 3);
+        echo json_encode(['success' => true, 'aprovado' => $pago]);
+    } catch (Throwable $e) {
+        echo json_encode(['success' => false, 'aprovado' => false, 'message' => $e->getMessage()]);
+    }
     exit;
 }
 

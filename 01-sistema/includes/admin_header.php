@@ -73,6 +73,7 @@ $superfreteMenu = in_array($pdo->query('SELECT superfrete_modo FROM config_dev W
                     <a href="/config_sistema/entrega.php">Entrega</a>
                     <a href="/config_sistema/pdv.php">PDV</a>
                     <a href="/integracoes/mercado_pago/conectar.php">Mercado Pago</a>
+                    <a href="/config_sistema/bradesco.php">Pix Bradesco</a>
                     <?php if ($superfreteMenu): ?><a href="/config_sistema/superfrete.php">SuperFrete</a><?php endif; ?>
                     <?php if ($whatsappMenu): ?><a href="/config_sistema/whatsapp.php">WhatsApp</a><?php endif; ?>
                     <a href="/config_sistema/nota_fiscal.php">Nota fiscal</a>
