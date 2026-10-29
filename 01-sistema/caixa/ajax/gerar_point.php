@@ -72,9 +72,13 @@ $payload = [
         ],
     ],
     'integration_data' => [
-        'sponsor' => ['id' => '194420711'],
+        'sponsor' => ['id' => MP_SPONSOR_ID],
     ],
 ];
+
+if (mpMesmaContaDoIntegrador($config)) {
+    unset($payload['marketplace_fee'], $payload['integration_data']);
+}
 
 try {
     $resposta = mpChamarApi('POST', 'https://api.mercadopago.com/v1/orders', $payload, $config['mp_access_token'], [

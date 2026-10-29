@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth_cliente.php';
 require_once __DIR__ . '/../../includes/mp_client.php';
+require_once __DIR__ . '/../../includes/credito.php';
 exigirClienteLogado();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -12,9 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $id_cliente = (int) $_SESSION['id_cliente'];
 $valor = converterMoedaBrParaFloat($_POST['valor'] ?? '0');
 
-$stmtCliente = $pdo->prepare('SELECT saldo_devedor FROM clientes WHERE id_cliente = :id');
+// Link aberto e abandonado não pode travar o cliente pra sempre (ver credito.php).
+expirarPagamentosDividaAbandonados($pdo, $id_cliente);
+
+$stmtCliente = $pdo->prepare('SELECT nome, email, saldo_devedor FROM clientes WHERE id_cliente = :id');
 $stmtCliente->execute([':id' => $id_cliente]);
-$saldoDevedor = (float) $stmtCliente->fetchColumn();
+$clienteDivida = $stmtCliente->fetch() ?: [];
+$saldoDevedor = (float) ($clienteDivida['saldo_devedor'] ?? 0);
 
 // Pagamentos já gerados e ainda não confirmados contam contra o saldo: sem isso, duas abas
 // (ou um back-button) geram duas preferências pra mesma dívida e o segundo pagamento
@@ -69,11 +74,27 @@ $preference = [
     // /checkout/preferences seja mais tolerante. marketplace_fee é o único
     // campo documentado como correto aqui.
     'marketplace_fee' => $application_fee,
-    'sponsor_id' => 194420711,
+    'sponsor_id' => (int) MP_SPONSOR_ID,
     'excluded_payment_types' => [
         ['id' => 'ticket'],
     ],
+    // O link e o Pix gerado por ele valem o mesmo prazo que o movimento fica
+    // 'Pendente' -- sem date_of_expiration o Pix do Checkout Pro continua pagável
+    // por até 24 h, bem depois de a tela do cliente já ter liberado outro link.
+    'expires' => true,
+    'expiration_date_from' => (new DateTime())->format(DateTime::ATOM),
+    'expiration_date_to' => (new DateTime('+' . PRAZO_PAGAMENTO_DIVIDA_MINUTOS . ' minutes'))->format(DateTime::ATOM),
+    'date_of_expiration' => (new DateTime('+' . PRAZO_PAGAMENTO_DIVIDA_MINUTOS . ' minutes'))->format('Y-m-d\TH:i:s.vP'),
+    'statement_descriptor' => mpDescricaoFatura($nomeLojaMp),
+    'payer' => array_filter([
+        'name' => $clienteDivida['nome'] ?? null,
+        'email' => !empty($clienteDivida['email']) ? $clienteDivida['email'] : null,
+    ]),
 ];
+
+if (mpMesmaContaDoIntegrador($config)) {
+    unset($preference['marketplace_fee'], $preference['sponsor_id']);
+}
 
 try {
     $resposta = mpChamarApi('POST', 'https://api.mercadopago.com/checkout/preferences', $preference, $config['mp_access_token']);

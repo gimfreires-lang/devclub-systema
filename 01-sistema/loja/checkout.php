@@ -134,6 +134,10 @@ $erro = $_GET['erro'] ?? '';
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10V8a6 6 0 1 1 12 0v2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1Zm2 0h8V8a4 4 0 1 0-8 0v2Z"/></svg>
                     Pagar com Mercado Pago
                 </button>
+                <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin:8px 0 0; text-align:center;">
+                    Pix (aprovado na hora) ou cartão, no ambiente seguro do Mercado Pago.
+                    Nenhum dado do seu cartão fica salvo na loja.
+                </p>
 
                 <?php if ($temLimiteCredito): ?>
                 <button type="submit" id="btn-pagar-credito" formaction="/loja/ajax/finalizar_credito.php" class="btn-outline btn-bloco" style="margin-top:10px;">

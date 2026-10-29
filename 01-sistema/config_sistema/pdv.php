@@ -18,11 +18,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $pdo->prepare('UPDATE config_loja SET prazo_reserva_minutos = :prazo, prazo_pagamento_minutos = :prazoPg, imprimir_automatico = :imp WHERE id_config = 1')
             ->execute([':prazo' => $prazo, ':prazoPg' => $prazoPagamento, ':imp' => $imprimirAuto]);
+        // Prazo das encomendas de carne -- coluna nova (sql/schema_melhorias_2026_10.sql);
+        // se ainda não existir, o resto continua salvando normalmente.
+        try {
+            $pdo->prepare('UPDATE config_loja SET prazo_encomenda_carnes = :p WHERE id_config = 1')
+                ->execute([':p' => mb_substr(trim($_POST['prazo_encomenda_carnes'] ?? ''), 0, 80) ?: null]);
+        } catch (Throwable $e) {
+            error_log('pdv.php: prazo_encomenda_carnes indisponível: ' . $e->getMessage());
+        }
         $sucesso = 'Configurações salvas.';
     }
 }
 
 $config = $pdo->query('SELECT prazo_reserva_minutos, prazo_pagamento_minutos, imprimir_automatico FROM config_loja WHERE id_config = 1')->fetch();
+$prazoEncomendaCarnes = null;
+try {
+    $prazoEncomendaCarnes = (string) $pdo->query('SELECT prazo_encomenda_carnes FROM config_loja WHERE id_config = 1')->fetchColumn();
+} catch (Throwable $e) {
+    // Coluna ainda não criada -- o campo aparece desabilitado com o aviso.
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -54,6 +68,17 @@ $config = $pdo->query('SELECT prazo_reserva_minutos, prazo_pagamento_minutos, im
             </label>
             <p id="conversor-prazo-pagamento" style="color:var(--cor-texto-suave); font-size:0.8rem; margin-top:-10px; margin-bottom:4px;"></p>
             <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin-top:0; margin-bottom:16px;">A partir do momento que o cliente clica em "Pagar com Mercado Pago", esse é o prazo que ele tem pra concluir o pagamento (Pix ou cartão) antes da venda ser cancelada sozinha e o produto voltar pro estoque. Esse prazo já não depende mais do tempo de espera do carrinho acima — é um cronômetro à parte, específico do pagamento.</p>
+
+            <label>Prazo das encomendas de carne de domingo
+                <input type="text" name="prazo_encomenda_carnes" maxlength="80" placeholder="até sábado às 18h" value="<?= htmlspecialchars((string) $prazoEncomendaCarnes) ?>"<?= $prazoEncomendaCarnes === null ? ' disabled' : '' ?>>
+            </label>
+            <p style="color:var(--cor-texto-suave); font-size:0.85rem; margin-top:-6px; margin-bottom:16px;">
+                <?php if ($prazoEncomendaCarnes === null): ?>
+                    Para usar este campo, importe o arquivo <strong>sql/schema_melhorias_2026_10.sql</strong> no phpMyAdmin.
+                <?php else: ?>
+                    Aparece no banner da loja: "Encomende a sua <em>até sábado às 18h</em>." Deixe vazio para mostrar "com antecedência".
+                <?php endif; ?>
+            </p>
 
             <h2 style="margin-top:8px;">Impressão do comprovante</h2>
             <div class="lista-checkbox">

@@ -38,8 +38,16 @@ $payload = [
     // (erro real confirmado em produção) -- application_fee é o único campo
     // correto aqui.
     'application_fee' => $application_fee,
-    'sponsor_id' => 194420711,
+    'sponsor_id' => (int) MP_SPONSOR_ID,
+    // Sem prazo, o QR Code do balcão continuava pagável por 24 h: se o cliente
+    // desistisse e pagasse em dinheiro, ainda dava pra pagar o Pix depois e cobrar
+    // duas vezes. 30 minutos sobra pra quem está na frente do caixa.
+    'date_of_expiration' => (new DateTime('+30 minutes'))->format('Y-m-d\TH:i:s.vP'),
 ];
+
+if (mpMesmaContaDoIntegrador($config)) {
+    unset($payload['application_fee'], $payload['sponsor_id']);
+}
 
 try {
     $resposta = mpChamarApi('POST', 'https://api.mercadopago.com/v1/payments', $payload, $config['mp_access_token'], [

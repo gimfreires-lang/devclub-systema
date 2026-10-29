@@ -149,6 +149,28 @@ function definirEntregaDaVenda(PDO $pdo, int $id_venda, array $entrega): float
 }
 
 /**
+ * Unidade em que o produto é vendido: 'kg' para carnes por quilo (o lojista já
+ * cadastra com "(kg)" no nome, ex.: "Costela Minga (kg)") ou 'un'. Antes o site
+ * mostrava "20 unidades disponíveis" numa costela vendida por quilo.
+ */
+function unidadeVendaProduto(array $produto): string
+{
+    return preg_match('/\(\s*kg\s*\)|\bpor\s+kg\b|\bo\s+kg\b/iu', (string) ($produto['nome'] ?? '')) ? 'kg' : 'un';
+}
+
+/** "20 kg disponíveis" / "1 unidade disponível" / "5 disponíveis" (card curto). */
+function textoDisponibilidade(int $quantidade, string $unidade, bool $curto = false): string
+{
+    if ($unidade === 'kg') {
+        return $quantidade . ' kg ' . ($quantidade === 1 ? 'disponível' : 'disponíveis');
+    }
+    if ($curto) {
+        return $quantidade . ' ' . ($quantidade === 1 ? 'disponível' : 'disponíveis');
+    }
+    return $quantidade . ' ' . ($quantidade === 1 ? 'unidade disponível' : 'unidades disponíveis');
+}
+
+/**
  * Monta o link "wa.me" pra compartilhar um produto num grupo/contato do
  * WhatsApp — sem número de destino, então abre o seletor de conversa do
  * próprio WhatsApp. O texto traz nome e preço direto na mensagem (não
@@ -634,6 +656,89 @@ function enviarCodigoWhatsapp(PDO $pdo, int $id_cliente, string $whatsapp, strin
 }
 
 /**
+ * Reabre um pedido da loja que foi cancelado por expirar o prazo de pagamento,
+ * mas cujo pagamento chegou aprovado depois. Só reabre se:
+ *  - o cancelamento veio do prazo (não do lojista nem de um cancelamento de pedido pago);
+ *  - ainda há estoque livre para todos os itens -- a reserva é refeita aqui,
+ *    na mesma transação, pra finalizarVenda() baixar o estoque do jeito de sempre.
+ * Retorna true se o pedido voltou a 'Reservado'.
+ */
+function reabrirVendaLojaPagaAposExpirar(PDO $pdo, int $id_venda): bool
+{
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT status, pagamento_expira_em, motivo_cancelamento FROM vendas
+             WHERE id_venda = :id AND origem = 'loja' FOR UPDATE"
+        );
+        $stmt->execute([':id' => $id_venda]);
+        $venda = $stmt->fetch();
+
+        // Pedido cancelado à mão (com motivo) não volta sozinho -- vira alerta pro lojista.
+        if (!$venda || $venda['status'] !== 'Cancelado' || $venda['pagamento_expira_em'] === null || !empty($venda['motivo_cancelamento'])) {
+            $pdo->rollBack();
+            return false;
+        }
+
+        $itens = $pdo->prepare('SELECT id_produto_variacao, quantidade FROM itens_venda WHERE id_venda = :id AND id_produto_variacao IS NOT NULL ORDER BY id_produto_variacao');
+        $itens->execute([':id' => $id_venda]);
+        foreach ($itens->fetchAll() as $item) {
+            $stmtPv = $pdo->prepare(
+                'SELECT pv.estoque, pv.estoque_reservado, p.estoque_gerenciado FROM produto_variacoes pv
+                 JOIN produtos p ON p.id_produto = pv.id_produto
+                 WHERE pv.id_produto_variacao = :id FOR UPDATE'
+            );
+            $stmtPv->execute([':id' => $item['id_produto_variacao']]);
+            $pv = $stmtPv->fetch();
+            if (!$pv) {
+                $pdo->rollBack();
+                return false;
+            }
+            // Produto sem controle de estoque não é reservado (igual a adicionar_item.php).
+            if (!(int) $pv['estoque_gerenciado']) {
+                continue;
+            }
+            if (((int) $pv['estoque'] - (int) $pv['estoque_reservado']) < (int) $item['quantidade']) {
+                $pdo->rollBack();
+                return false;
+            }
+            $pdo->prepare('UPDATE produto_variacoes SET estoque_reservado = estoque_reservado + :qtd WHERE id_produto_variacao = :id')
+                ->execute([':qtd' => $item['quantidade'], ':id' => $item['id_produto_variacao']]);
+        }
+
+        $pdo->prepare("UPDATE vendas SET status = 'Reservado' WHERE id_venda = :id AND status = 'Cancelado'")
+            ->execute([':id' => $id_venda]);
+        $pdo->commit();
+        return true;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('reabrirVendaLojaPagaAposExpirar(' . $id_venda . '): ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Guarda um pagamento aprovado que não virou pedido (precisa de devolução
+ * manual pelo Mercado Pago). Aparece no painel em "Pedidos" como alerta.
+ * Se a tabela ainda não foi criada (sql/schema_melhorias_2026_10.sql), fica
+ * pelo menos no log do servidor.
+ */
+function registrarPagamentoSemPedido(PDO $pdo, int $id_venda, array $pagamento, string $dataId, string $motivo): void
+{
+    $valor = (float) ($pagamento['transaction_amount'] ?? 0);
+    error_log("PAGAMENTO SEM PEDIDO: venda {$id_venda}, pagamento MP {$dataId}, R$ {$valor} -- {$motivo}. Devolver pelo Mercado Pago.");
+    try {
+        $pdo->prepare(
+            'INSERT IGNORE INTO pagamentos_sem_pedido (id_pagamento_mp, id_venda, valor, motivo) VALUES (:mp, :iv, :valor, :motivo)'
+        )->execute([':mp' => $dataId, ':iv' => $id_venda, ':valor' => $valor, ':motivo' => $motivo]);
+    } catch (Throwable $e) {
+        error_log('registrarPagamentoSemPedido: tabela pagamentos_sem_pedido ausente? ' . $e->getMessage());
+    }
+}
+
+/**
  * Processa o webhook do Mercado Pago pro fluxo da loja online (checkout) —
  * chamado pelo endpoint único em integracoes/mercado_pago/webhook.php quando
  * o external_reference do pagamento começa com "loja_".
@@ -643,9 +748,27 @@ function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, st
     $statusPagamento = $pagamento['status'] ?? null;
 
     if ($statusPagamento === 'approved') {
-        $stmt = $pdo->prepare("SELECT status FROM vendas WHERE id_venda = :id AND origem = 'loja'");
+        $stmt = $pdo->prepare("SELECT status, id_pagamento_mp FROM vendas WHERE id_venda = :id AND origem = 'loja'");
         $stmt->execute([':id' => $id_venda]);
         $venda = $stmt->fetch();
+
+        // Pedido que este mesmo pagamento já tinha concluído e o lojista cancelou
+        // depois (cancelamento de pedido pago): notificação repetida, nada a fazer.
+        if ($venda && $venda['status'] === 'Cancelado' && (string) $venda['id_pagamento_mp'] === (string) $dataId) {
+            return;
+        }
+
+        // Pix pago depois que o prazo de pagamento acabou: a varredura de expiração
+        // já tinha cancelado o pedido e devolvido o estoque, e o webhook ignorava a
+        // notificação -- o cliente pagava e ficava sem pedido, sem ninguém saber.
+        // Agora o pedido é reaberto (se ainda houver estoque) e segue o fluxo normal.
+        if ($venda && $venda['status'] === 'Cancelado') {
+            if (!reabrirVendaLojaPagaAposExpirar($pdo, $id_venda)) {
+                registrarPagamentoSemPedido($pdo, $id_venda, $pagamento, $dataId, 'pedido cancelado e sem estoque para reabrir');
+                return;
+            }
+            $venda['status'] = 'Reservado';
+        }
 
         if ($venda && $venda['status'] === 'Reservado') {
             $valorPago = (float) ($pagamento['transaction_amount'] ?? 0);
@@ -665,10 +788,15 @@ function processarWebhookVendaLoja(PDO $pdo, int $id_venda, array $pagamento, st
                 // (rowCount() > 0) é que devolve a reserva. Isso evita devolver estoque
                 // que já foi legitimamente consumido pela chamada vencedora.
                 if (str_contains($resultado['message'], 'Estoque insuficiente')) {
-                    $cancelou = $pdo->prepare("UPDATE vendas SET status = 'Cancelado' WHERE id_venda = :id AND status = 'Reservado'");
+                    // Com motivo gravado, uma notificação repetida deste mesmo pagamento
+                    // não tenta reabrir o pedido (ver reabrirVendaLojaPagaAposExpirar()).
+                    $cancelou = $pdo->prepare("UPDATE vendas SET status = 'Cancelado', motivo_cancelamento = 'Estoque acabou antes da confirmação do pagamento' WHERE id_venda = :id AND status = 'Reservado'");
                     $cancelou->execute([':id' => $id_venda]);
                     if ($cancelou->rowCount() > 0) {
                         devolverReservaDaVenda($pdo, $id_venda);
+                        // O cliente PAGOU e o pedido foi cancelado: o lojista precisa
+                        // ver isso pra devolver o dinheiro pelo Mercado Pago.
+                        registrarPagamentoSemPedido($pdo, $id_venda, $pagamento, $dataId, 'estoque acabou antes da confirmação do pagamento');
                     }
                 }
                 // Outros motivos de falha (pagamento parcial/insuficiente, venda já finalizada por uma

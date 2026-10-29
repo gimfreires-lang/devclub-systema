@@ -3,8 +3,14 @@ require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/loja.php';
 
+// Página de origem (produto, carrinho...) pra onde o cliente volta depois de
+// entrar -- antes ele sempre caía no catálogo e tinha que achar o produto de novo.
+if (isset($_GET['voltar']) && destinoLojaSeguro($_GET['voltar'])) {
+    $_SESSION['voltar_apos_login'] = destinoLojaSeguro($_GET['voltar']);
+}
+
 if (!empty($_SESSION['id_cliente'])) {
-    header('Location: /loja/index.php');
+    header('Location: ' . destinoAposLoginCliente());
     exit;
 }
 
@@ -136,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Mesmo papel da verificação de e-mail no cadastro por e-mail: o
                     // cliente já navega, só fica sem o carrinho até validar o contato.
                     dispararVerificacaoWhatsapp($pdo, $idClienteNovo, $whatsappNormalizado, $nome);
-                    header('Location: /loja/index.php');
+                    header('Location: ' . destinoAposLoginCliente());
                     exit;
                 } catch (PDOException $e) {
                     error_log('PDOException in cadastro (whatsapp): ' . $e->getMessage());
@@ -194,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Cliente já entra navegando normalmente — só fica sem poder usar o
                     // carrinho até confirmar que o e-mail é de verdade dele.
                     dispararVerificacaoEmail($pdo, $idClienteNovo, $emailNormalizado, $nome);
-                    header('Location: /loja/index.php');
+                    header('Location: ' . destinoAposLoginCliente());
                     exit;
                 } catch (PDOException $e) {
                     // Corrida rara (duas abas cadastrando ao mesmo tempo) — a checagem prévia
@@ -260,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
                         $_SESSION['nome_cliente'] = $cliente['nome'];
                         session_regenerate_id(true);
-                        header('Location: /loja/index.php');
+                        header('Location: ' . destinoAposLoginCliente());
                         exit;
                     }
                     $erro = 'Não foi possível ativar a conta. Verifique os dados.';
@@ -300,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($cliente['email']) && $cliente['email_verificado_em'] === null) {
                 reenviarCodigoVerificacaoEmail($pdo, (int) $cliente['id_cliente'], $cliente['email'], $cliente['nome']);
             }
-            header('Location: /loja/index.php');
+            header('Location: ' . destinoAposLoginCliente());
             exit;
         }
 
@@ -376,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['id_cliente'] = (int) $cliente['id_cliente'];
                 $_SESSION['nome_cliente'] = $cliente['nome'];
                 session_regenerate_id(true);
-                header('Location: /loja/index.php');
+                header('Location: ' . destinoAposLoginCliente());
                 exit;
             }
         }

@@ -4,6 +4,28 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/pedidos.php';
 exigirLogin();
 
+// Pagamentos aprovados no Mercado Pago que não viraram pedido (ver
+// registrarPagamentoSemPedido() em includes/loja.php). O lojista devolve o
+// dinheiro pelo app do Mercado Pago e marca aqui como resolvido.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'resolver_pagamento_sem_pedido') {
+    try {
+        $pdo->prepare('UPDATE pagamentos_sem_pedido SET resolvido_em = NOW(), resolvido_por = :u WHERE id = :id AND resolvido_em IS NULL')
+            ->execute([':u' => (int) $_SESSION['id_usuario'], ':id' => (int) ($_POST['id'] ?? 0)]);
+    } catch (Throwable $e) {
+        error_log('pedidos/lista.php: ' . $e->getMessage());
+    }
+    header('Location: /pedidos/lista.php');
+    exit;
+}
+$pagamentosSemPedido = [];
+try {
+    $pagamentosSemPedido = $pdo->query(
+        'SELECT id, id_pagamento_mp, id_venda, valor, motivo, criado_em FROM pagamentos_sem_pedido WHERE resolvido_em IS NULL ORDER BY criado_em DESC'
+    )->fetchAll();
+} catch (Throwable $e) {
+    // Tabela ainda não criada (rodar sql/schema_melhorias_2026_10.sql) -- segue sem o alerta.
+}
+
 $busca = trim($_GET['busca'] ?? '');
 $filtro = $_GET['status_entrega'] ?? '';
 $filtroValido = $filtro === 'cancelados' || $filtro === 'aguardando_pagamento' || in_array($filtro, STATUS_ENTREGA_VALIDOS, true) ? $filtro : '';
@@ -83,6 +105,27 @@ function montarLinkFiltroPedidos(int $pagina, string $status, string $busca): st
             <span class="subtitulo"><?= $totalPedidos ?> pedido<?= $totalPedidos === 1 ? '' : 's' ?> da loja online</span>
         </div>
     </div>
+
+    <?php if (!empty($pagamentosSemPedido)): ?>
+    <div class="alert alert-erro">
+        <strong>Atenção: <?= count($pagamentosSemPedido) ?> pagamento<?= count($pagamentosSemPedido) === 1 ? '' : 's' ?> recebido<?= count($pagamentosSemPedido) === 1 ? '' : 's' ?> sem pedido.</strong>
+        O cliente pagou, mas o pedido não pôde ser concluído. Devolva o valor pelo app do Mercado Pago (Atividade → pagamento → Devolver) ou combine com o cliente, e depois marque como resolvido.
+        <ul style="margin:8px 0 0; padding-left:18px;">
+            <?php foreach ($pagamentosSemPedido as $ps): ?>
+            <li style="margin-bottom:6px;">
+                Pedido #<?= (int) $ps['id_venda'] ?> — R$ <?= number_format((float) $ps['valor'], 2, ',', '.') ?>
+                — pagamento MP <?= htmlspecialchars((string) $ps['id_pagamento_mp']) ?>
+                (<?= htmlspecialchars($ps['motivo']) ?>, <?= date('d/m H:i', strtotime($ps['criado_em'])) ?>)
+                <form method="post" style="display:inline;" data-confirm="Já devolveu ou resolveu este pagamento com o cliente?">
+                    <input type="hidden" name="acao" value="resolver_pagamento_sem_pedido">
+                    <input type="hidden" name="id" value="<?= (int) $ps['id'] ?>">
+                    <button type="submit" class="btn-outline" style="padding:2px 10px; font-size:0.85rem;">Marcar como resolvido</button>
+                </form>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
 
     <div class="layout-lateral">
         <aside class="filtros-lateral">

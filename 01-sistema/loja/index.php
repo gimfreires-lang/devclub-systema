@@ -22,6 +22,16 @@ foreach ($categorias as $c) {
 }
 $domingoDeChurrasco = hojeEDomingoDeChurrasco();
 
+// Prazo das encomendas de carne (Configurações → Loja). "Encomende com
+// antecedência" sozinho não dizia ATÉ QUANDO; agora o lojista escreve o prazo
+// (ex.: "até sábado às 18h") e ele aparece no banner.
+$prazoEncomendaCarnes = '';
+try {
+    $prazoEncomendaCarnes = trim((string) $pdo->query('SELECT prazo_encomenda_carnes FROM config_loja WHERE id_config = 1')->fetchColumn());
+} catch (Throwable $e) {
+    // Coluna ainda não criada (sql/schema_melhorias_2026_10.sql) -- banner antigo.
+}
+
 const PRODUTOS_POR_PAGINA = 12;
 $pagina = max(1, (int) ($_GET['pagina'] ?? 1));
 
@@ -155,7 +165,7 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
         <svg class="icone-churrasco" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 2c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8C4.6 6.5 5.5 5.3 6.2 4.5c.6-.7.9-1.1.6-1.8L8.5 2Zm4 0c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8c-1-1.8-.1-3 .6-3.8.6-.7.9-1.1.6-1.8L12.5 2Zm4 0c.6 1.4-.3 2.3-.9 3-.6.7-1 1.3-.4 2.5l-1.6.8c-1-1.8-.1-3 .6-3.8.6-.7.9-1.1.6-1.8L16.5 2ZM2 10h20a8 8 0 0 1-5.2 7.5L18.5 22h-2.1l-1.5-4c-.9.2-1.9.3-2.9.3s-2-.1-2.9-.3l-1.5 4H5.5l1.7-4.5A8 8 0 0 1 2 10Z"/></svg>
         <div>
             <strong><?= $domingoDeChurrasco ? 'Hoje é domingo de churrasco!' : 'Domingo é dia de churrasco' ?></strong>
-            <p><?= $domingoDeChurrasco ? 'Carnes assadas na hora, saindo da brasa. Garanta a sua antes que acabe.' : 'Todo domingo tem carne assada no Clube. Encomende a sua com antecedência.' ?></p>
+            <p><?= $domingoDeChurrasco ? 'Carnes assadas na hora, saindo da brasa. Garanta a sua antes que acabe.' : 'Todo domingo tem carne assada no Clube. Encomende a sua ' . ($prazoEncomendaCarnes !== '' ? htmlspecialchars($prazoEncomendaCarnes) : 'com antecedência') . '.' ?></p>
         </div>
         <?php if ($idCategoriaChurrasco > 0): ?>
             <a class="btn" href="/loja/index.php?categoria=<?= $idCategoriaChurrasco ?>">Ver carnes</a>
@@ -250,11 +260,11 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
                         <?php endif; ?>
                     </div>
                     <div class="nome"><?= htmlspecialchars($p['nome']) ?></div>
-                    <div class="price">R$ <?= number_format($p['preco_base'], 2, ',', '.') ?></div>
+                    <div class="price">R$ <?= number_format($p['preco_base'], 2, ',', '.') ?><?= unidadeVendaProduto($p) === 'kg' ? ' <small>/kg</small>' : '' ?></div>
                     <?php if ($reservado): ?>
                         <div class="disponibilidade card disponibilidade-baixa">Aguardando pagamento de outro cliente</div>
                     <?php elseif (!$semControleEstoque): ?>
-                        <div class="disponibilidade card<?= $disp <= 3 ? ' disponibilidade-baixa' : '' ?>"><?= $disp ?> disponíve<?= $disp === 1 ? 'l' : 'is' ?></div>
+                        <div class="disponibilidade card<?= $disp <= 3 ? ' disponibilidade-baixa' : '' ?>"><?= textoDisponibilidade((int) $disp, unidadeVendaProduto($p), true) ?></div>
                     <?php endif; ?>
                 </a>
                 <?php endforeach; ?>
@@ -287,6 +297,12 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
         return div.innerHTML;
     }
 
+    // Mesma regra de unidadeVendaProduto() no PHP: carne "(kg)" mostra "20 kg disponíveis".
+    function textoDispJs(qtd, nome) {
+        const kg = /\(\s*kg\s*\)|\bpor\s+kg\b|\bo\s+kg\b/i.test(nome || '');
+        return qtd + (kg ? ' kg' : '') + (qtd === 1 ? ' disponível' : ' disponíveis');
+    }
+
     function criarCardProduto(produto) {
         const precoFormatado = produto.preco_base.toFixed(2).replace('.', ',');
         let mediaHtml = '';
@@ -305,7 +321,7 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
         a.className = 'product-card voltou';
         a.dataset.idProduto = String(produto.id_produto);
         const dispClasse = produto.disponivel <= 3 ? ' disponibilidade-baixa' : '';
-        const dispTexto = produto.disponivel + (produto.disponivel === 1 ? ' disponível' : ' disponíveis');
+        const dispTexto = textoDispJs(produto.disponivel, produto.nome);
         const textoWhatsapp = '🛍️ *' + produto.nome + '*\nR$ ' + precoFormatado + '\n\n' + window.location.origin + '/loja/produto.php?id=' + produto.id_produto;
         const linkWhatsapp = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(textoWhatsapp);
         a.innerHTML =
@@ -316,7 +332,7 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
             '</div>' +
             '<div class="card-media">' + mediaHtml + '</div>' +
             '<div class="nome">' + escaparHtml(produto.nome) + '</div>' +
-            '<div class="price">R$ ' + precoFormatado + '</div>' +
+            '<div class="price">R$ ' + precoFormatado + (/\(\s*kg\s*\)/i.test(produto.nome) ? ' <small>/kg</small>' : '') + '</div>' +
             '<div class="disponibilidade card' + dispClasse + '">' + dispTexto + '</div>';
         return a;
     }
@@ -357,7 +373,8 @@ function montarLinkPagina(int $p, int $categoria, string $busca): string
                 dispEl.textContent = 'Aguardando pagamento de outro cliente';
             } else {
                 dispEl.className = 'disponibilidade card' + (disponivel <= 3 ? ' disponibilidade-baixa' : '');
-                dispEl.textContent = disponivel + (disponivel === 1 ? ' disponível' : ' disponíveis');
+                const nomeEl = card.querySelector('.nome');
+                dispEl.textContent = textoDispJs(disponivel, nomeEl ? nomeEl.textContent : '');
             }
         }
     }
