@@ -38,15 +38,40 @@ if (!$produto) {
     exit;
 }
 
+$preco_unit = (float) $produto['preco'];
+
+// Mesmo produto bipado de novo soma na linha que já está no carrinho (2x, 3x...)
+// em vez de abrir uma linha nova a cada clique. Só junta se o preço for o mesmo.
+$stmtExistente = $pdo->prepare(
+    'SELECT id_item, quantidade FROM itens_venda
+     WHERE id_venda = :iv AND id_produto_variacao = :ipv AND preco_unit = :preco
+     ORDER BY id_item LIMIT 1'
+);
+$stmtExistente->execute([':iv' => $id_venda, ':ipv' => $id_produto_variacao, ':preco' => $preco_unit]);
+$itemExistente = $stmtExistente->fetch();
+
 if ((int) $produto['estoque_gerenciado']) {
-    $disponivel = $produto['estoque'] - $produto['estoque_reservado'];
+    // Conta o que já está nesta venda: antes dava pra bipar além do estoque e a
+    // venda só travava no "Finalizar".
+    $stmtNoCarrinho = $pdo->prepare('SELECT COALESCE(SUM(quantidade), 0) FROM itens_venda WHERE id_venda = :iv AND id_produto_variacao = :ipv');
+    $stmtNoCarrinho->execute([':iv' => $id_venda, ':ipv' => $id_produto_variacao]);
+    $jaNoCarrinho = (int) $stmtNoCarrinho->fetchColumn();
+    $disponivel = $produto['estoque'] - $produto['estoque_reservado'] - $jaNoCarrinho;
     if ($disponivel < $quantidade) {
-        echo json_encode(['success' => false, 'message' => 'Estoque insuficiente (disponível: ' . $disponivel . ').']);
+        echo json_encode(['success' => false, 'message' => 'Estoque insuficiente (disponível: ' . max(0, $disponivel) . ').']);
         exit;
     }
 }
 
-$preco_unit = (float) $produto['preco'];
+if ($itemExistente) {
+    $novaQuantidade = (int) $itemExistente['quantidade'] + $quantidade;
+    $pdo->prepare('UPDATE itens_venda SET quantidade = :qtd, subtotal = :subtotal WHERE id_item = :id')
+        ->execute([':qtd' => $novaQuantidade, ':subtotal' => $preco_unit * $novaQuantidade, ':id' => $itemExistente['id_item']]);
+    recalcularTotalVenda($pdo, $id_venda);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 $subtotal = $preco_unit * $quantidade;
 
 $pdo->prepare(

@@ -5,7 +5,11 @@
 -- IDs 9101-9115 (faixa alta pra não colidir com produtos reais). Os produtos
 -- vêm sem foto: a loja mostra a imagem de "produto indisponível" até você
 -- subir as fotos pelo painel. As carnes de verdade, com foto e preço, ficam
--- em sql/carnes_e_contato_clube.sql.
+-- em 02-banco-de-dados/carnes_e_contato_clube.sql.
+--
+-- É seguro rodar mais de uma vez, e também depois do
+-- 02-banco-de-dados/bebidas_clube.sql (que usa os mesmos IDs): o que já
+-- existe fica como está.
 
 SET NAMES utf8mb4;
 
@@ -28,11 +32,12 @@ INSERT INTO produtos (id_produto, nome, descricao, id_categoria, condicao, preco
 (9112, 'Gelo em Cubo 5kg', 'Saco de gelo em cubo de 5kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 12.00, 1),
 (9113, 'Carvão Vegetal 4kg', 'Saco de carvão vegetal de 4kg.', (SELECT id_categoria FROM categorias WHERE nome = 'Gelo e Carvão'), 'novo', 24.90, 1),
 (9114, 'Seda e Isqueiro (kit)', 'Kit com seda e isqueiro. Venda proibida para menores de 18 anos.', (SELECT id_categoria FROM categorias WHERE nome = 'Tabacaria'), 'novo', 12.90, 1),
-(9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1);
+(9115, 'Amendoim Torrado 500g', 'Amendoim torrado e salgado.', (SELECT id_categoria FROM categorias WHERE nome = 'Petiscos'), 'novo', 14.90, 1)
+ON DUPLICATE KEY UPDATE id_produto = id_produto;
 
 -- Uma única variação por produto (preco NULL cai no preco_base, mesma regra
 -- do resto do sistema).
-INSERT INTO produto_variacoes (id_produto_variacao, id_produto, preco, estoque) VALUES
+INSERT IGNORE INTO produto_variacoes (id_produto_variacao, id_produto, preco, estoque) VALUES
 (9101, 9101, NULL, 240), (9102, 9102, NULL, 30), (9103, 9103, NULL, 120),
 (9104, 9104, NULL, 48), (9105, 9105, NULL, 24), (9106, 9106, NULL, 12),
 (9107, 9107, NULL, 10), (9108, 9108, NULL, 6), (9109, 9109, NULL, 18),
