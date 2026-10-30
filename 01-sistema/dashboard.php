@@ -161,6 +161,18 @@ $valoresFormas = array_map('floatval', array_column($formasPagamento, 'total'));
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Sem internet (ou com a CDN fora do ar) o Chart.js não carrega: mostra um
+    // aviso no lugar do gráfico em vez de travar o script com erro.
+    if (typeof Chart === 'undefined') {
+        document.querySelectorAll('#grafico-vendas-dias, #grafico-formas-pagamento').forEach(function (canvas) {
+            const aviso = document.createElement('p');
+            aviso.className = 'alert alert-info';
+            aviso.textContent = 'Não foi possível carregar o gráfico agora. Confira a internet e recarregue a página.';
+            canvas.replaceWith(aviso);
+        });
+        return;
+    }
+
     // Cores do Clube da Cerveja: dourado nas barras; no gráfico de formas de
     // pagamento, dourado, preto e prata primeiro, depois tons de apoio.
     const corPrimaria = '#F2B705';

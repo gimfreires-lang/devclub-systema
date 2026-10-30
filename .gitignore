@@ -1,0 +1,3 @@
+# PHP e banco baixados pela previa (ABRIR-PREVIA.bat) e os logs dela.
+/.previa/runtime/
+/.previa/*.log
