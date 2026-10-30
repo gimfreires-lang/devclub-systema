@@ -22,7 +22,7 @@ $creditoRodape = creditoRodape($pdo);
             <div><span class="rotulo">Endereço</span><span><?= htmlspecialchars($configContato['endereco_loja']) ?></span></div>
             <?php endif; ?>
             <?php if ($configContato['whatsapp_loja']): ?>
-            <div><span class="rotulo">WhatsApp</span><span><?= htmlspecialchars(formatarWhatsappExibicao($configContato['whatsapp_loja'])) ?></span></div>
+            <div><span class="rotulo">WhatsApp</span><span><a href="https://wa.me/<?= htmlspecialchars(preg_replace('/\D+/', '', $configContato['whatsapp_loja'])) ?>" target="_blank" rel="noopener"><?= htmlspecialchars(formatarWhatsappExibicao($configContato['whatsapp_loja'])) ?></a></span></div>
             <?php endif; ?>
             <?php if ($configContato['email_loja']): ?>
             <div><span class="rotulo">E-mail</span><span><?= htmlspecialchars($configContato['email_loja']) ?></span></div>

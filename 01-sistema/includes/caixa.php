@@ -240,7 +240,25 @@ function finalizarVenda(PDO $pdo, int $id_venda, array $pagamentos, ?string $id_
         $pdo->prepare('UPDATE vendas SET status = "Pago", forma_pagamento = :forma, id_pagamento_mp = :idmp, status_entrega = :se, token_recibo = :token WHERE id_venda = :id')
             ->execute([':forma' => $forma_pagamento, ':idmp' => $id_pagamento_mp, ':se' => $statusEntrega, ':token' => $tokenRecibo, ':id' => $id_venda]);
 
+        // Pedido da loja online: a data do pedido passa a ser a hora em que ele foi
+        // fechado. Antes ficava a hora em que o primeiro item entrou no carrinho
+        // (ex.: Pedido #10 mostrava 09:04 e o débito, 09:14).
+        if ($venda['origem'] === 'loja') {
+            $pdo->prepare('UPDATE vendas SET data_venda = NOW() WHERE id_venda = :id')->execute([':id' => $id_venda]);
+        }
+
         $pdo->commit();
+
+        // Avisos de WhatsApp do pedido (cliente e loja). Fora da transação e
+        // protegido: falha de envio nunca desfaz uma venda já concluída.
+        if ($venda['origem'] === 'loja') {
+            try {
+                require_once __DIR__ . '/avisos_whatsapp.php';
+                avisarPedidoConfirmado($pdo, $id_venda);
+            } catch (Throwable $e) {
+                error_log('finalizarVenda: aviso de WhatsApp do pedido ' . $id_venda . ' falhou: ' . $e->getMessage());
+            }
+        }
 
         return [
             'success' => true,

@@ -62,7 +62,13 @@ $superfreteMenu = in_array($pdo->query('SELECT superfrete_modo FROM config_dev W
                     <?php endif; ?>
                 </div>
             </div>
-            <a href="/pedidos/lista.php">Pedidos</a>
+            <div class="nav-grupo">
+                <button type="button" class="nav-grupo-trigger">Pedidos</button>
+                <div class="nav-submenu">
+                    <a href="/pedidos/lista.php">Todos os pedidos</a>
+                    <a href="/pedidos/domingo.php">Domingo (carnes)</a>
+                </div>
+            </div>
             <?php if ($fiscalMenu): ?><a href="/notas_fiscais/lista.php">Notas fiscais</a><?php endif; ?>
             <?php if (($_SESSION['perfil'] ?? '') === 'Admin'): ?>
             <div class="nav-grupo">
@@ -72,6 +78,7 @@ $superfreteMenu = in_array($pdo->query('SELECT superfrete_modo FROM config_dev W
                     <a href="/config_sistema/aparencia.php">Aparência</a>
                     <a href="/config_sistema/entrega.php">Entrega</a>
                     <a href="/config_sistema/pdv.php">PDV</a>
+                    <a href="/config_sistema/domingo.php">Domingo e avisos</a>
                     <a href="/integracoes/mercado_pago/conectar.php">Mercado Pago</a>
                     <a href="/config_sistema/bradesco.php">Pix Bradesco</a>
                     <?php if ($superfreteMenu): ?><a href="/config_sistema/superfrete.php">SuperFrete</a><?php endif; ?>

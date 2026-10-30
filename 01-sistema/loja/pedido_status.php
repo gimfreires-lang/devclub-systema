@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/pedidos.php';
 require_once __DIR__ . '/../includes/loja.php';
 require_once __DIR__ . '/../includes/superfrete.php';
 require_once __DIR__ . '/../includes/fiscal.php';
+require_once __DIR__ . '/../includes/domingo.php';
 exigirClienteLogado();
 
 $id_venda = (int) ($_GET['id_venda'] ?? 0);
@@ -39,7 +40,15 @@ $listaItens = $itens->fetchAll();
 $envioSf = superfreteAtivo($pdo) ? superfreteEnvioDaVenda($pdo, $id_venda) : null;
 $notasAutorizadas = array_filter(fiscalNotasDaVenda($pdo, $id_venda), fn($n) => $n['tipo'] === 'nfe' && $n['status'] === 'autorizada' && $n['tem_arquivo']);
 
-$rotulo = rotuloStatusPedido($venda['status'], $venda['status_entrega'], $venda['entrega_tipo']);
+// Retirada da carne do domingo agendada neste pedido (e se ainda dá pra trocar).
+$retiradaTexto = ($venda['status'] !== 'Cancelado' && !empty($venda['retirada_data'])) ? domingoRotuloRetirada($venda['retirada_data'], $venda['retirada_hora']) : '';
+$podeMudarRetirada = $retiradaTexto !== '' && domingoPodeMudar($pdo, $venda);
+$opcoesMudar = $podeMudarRetirada ? domingoOpcoes($pdo, $id_venda) : [];
+$corteRetirada = ($retiradaTexto !== '' && domingoConfig($pdo)) ? domingoRotuloCorte(domingoCorte($venda['retirada_data'], domingoConfig($pdo))) : '';
+$msgPedido = $_GET['msg'] ?? '';
+$erroPedido = $_GET['erro'] ?? '';
+
+$rotulo = rotuloStatusPedido($venda['status'], $venda['status_entrega'], $venda['entrega_tipo'], $venda['forma_pagamento']);
 $classePill = classePillStatusPedido($venda['status'], $venda['status_entrega']);
 
 // Retirada na loja não tem endereço de entrega — o cliente precisa saber
@@ -89,6 +98,65 @@ if (!empty($listaRelacionados)) {
     </div>
 
     <span class="status-pill<?= $classePill ? ' ' . $classePill : '' ?>" style="font-size:0.9rem; padding:8px 16px;"><?= htmlspecialchars($rotulo) ?></span>
+
+    <?php if ($msgPedido): ?><p class="alert alert-sucesso" style="margin-top:12px;"><?= htmlspecialchars($msgPedido) ?></p><?php endif; ?>
+    <?php if ($erroPedido): ?><p class="alert alert-erro" style="margin-top:12px;"><?= htmlspecialchars($erroPedido) ?></p><?php endif; ?>
+
+    <?php if ($retiradaTexto !== ''): ?>
+    <div class="retirada-destaque">
+        <span class="retirada-rotulo">Retirada agendada</span>
+        <strong class="retirada-quando"><?= htmlspecialchars(mb_strtoupper($retiradaTexto)) ?></strong>
+        <?php if ($dadosRetirada && $dadosRetirada['endereco_loja']): ?>
+        <span class="retirada-onde"><?= htmlspecialchars($dadosRetirada['endereco_loja']) ?></span>
+        <a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&amp;query=<?= urlencode($dadosRetirada['endereco_loja']) ?>" target="_blank" rel="noopener">Abrir no mapa</a>
+        <?php endif; ?>
+    </div>
+
+    <?php if ($podeMudarRetirada && !empty($opcoesMudar)): ?>
+    <details class="resumo-card retirada-mudar" style="max-width:520px;">
+        <summary>Mudar domingo ou horário <small>(até <?= htmlspecialchars($corteRetirada) ?>)</small></summary>
+        <form method="post" action="/loja/ajax/mudar_retirada.php" class="retirada-mudar-form">
+            <input type="hidden" name="id_venda" value="<?= (int) $id_venda ?>">
+            <label>Domingo
+                <select name="retirada_data" id="mudar-data">
+                    <?php foreach ($opcoesMudar as $d): ?>
+                    <option value="<?= htmlspecialchars($d['data']) ?>" <?= $d['data'] === $venda['retirada_data'] ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($d['rotulo'])) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Horário
+                <select name="retirada_hora" id="mudar-hora"></select>
+            </label>
+            <button type="submit" class="btn">Salvar novo horário</button>
+        </form>
+        <script>
+        (function () {
+            const opcoes = <?= json_encode(array_map(fn($d) => ['data' => $d['data'], 'horarios' => $d['horarios']], $opcoesMudar)) ?>;
+            const atual = <?= json_encode(['data' => $venda['retirada_data'], 'hora' => domingoRotuloHora($venda['retirada_hora'])]) ?>;
+            const selData = document.getElementById('mudar-data');
+            const selHora = document.getElementById('mudar-hora');
+            function preencher() {
+                const d = opcoes.find(o => o.data === selData.value);
+                selHora.innerHTML = '';
+                (d ? d.horarios : []).forEach(function (h) {
+                    const ehAtual = selData.value === atual.data && h.hora === atual.hora;
+                    const op = document.createElement('option');
+                    op.value = h.hora;
+                    op.disabled = h.vagas <= 0 && !ehAtual;
+                    op.textContent = h.hora + (ehAtual ? ' (atual)' : (h.vagas <= 0 ? ' — lotado' : ' — ' + h.vagas + (h.vagas === 1 ? ' vaga' : ' vagas')));
+                    op.selected = ehAtual;
+                    selHora.appendChild(op);
+                });
+            }
+            selData.addEventListener('change', preencher);
+            preencher();
+        })();
+        </script>
+    </details>
+    <?php elseif ($venda['status'] === 'Pago' && !$podeMudarRetirada && !in_array($venda['status_entrega'], ['Entregue'], true)): ?>
+    <p style="color:var(--cor-texto-suave); font-size:0.9rem;">O prazo para mudar o horário já passou. Precisa de algo? Fale com a loja pelo WhatsApp.</p>
+    <?php endif; ?>
+    <?php endif; ?>
 
     <?php if ($envioSf && $envioSf['servico_nome']): ?>
         <p style="margin-top:12px;"><strong>Entrega:</strong> <?= htmlspecialchars($envioSf['servico_nome']) ?><?= $envioSf['superfrete_rastreio'] ? ' — código de rastreio: <strong>' . htmlspecialchars($envioSf['superfrete_rastreio']) . '</strong>' : '' ?></p>

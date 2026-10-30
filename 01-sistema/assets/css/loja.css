@@ -1396,3 +1396,41 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--cor-borda); text-ali
 .texto-legal-rodape { margin-top: 28px; font-size: 0.9rem; color: var(--cor-texto-suave) !important; }
 .aviso-privacidade { font-size: 0.82rem; color: var(--cor-texto-suave); margin: 4px 0 12px; line-height: 1.45; }
 .aviso-privacidade a { color: var(--cor-dourado); }
+
+/* ---------- Agendamento da carne de domingo (checkout e pedido) ---------- */
+.domingo-bloco { border: 2px solid var(--cor-dourado); }
+.domingo-cabecalho { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.domingo-cabecalho h2 { margin: 0; font-size: 1.1rem; }
+.domingo-cabecalho p { margin: 2px 0 0; color: var(--cor-texto-suave); font-size: 0.9rem; }
+.domingo-icone { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: var(--cor-dourado-suave); color: #141414; display: flex; align-items: center; justify-content: center; }
+.domingo-icone svg { width: 22px; height: 22px; }
+.domingo-grupo { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+.domingo-grupo legend { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; padding: 0; }
+.domingo-opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.domingo-opcoes-datas { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.domingo-opcoes[hidden] { display: none; }
+.domingo-opcao { position: relative; display: block; margin: 0; cursor: pointer; }
+.domingo-opcao input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.domingo-opcao-texto { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 56px; padding: 8px; border: 2px solid var(--cor-borda); border-radius: 10px; background: var(--cor-fundo); color: var(--cor-texto); text-align: center; transition: border-color .15s, background .15s; }
+.domingo-opcao-texto strong { font-size: 1rem; }
+.domingo-opcao-texto small { font-size: 0.75rem; font-weight: 600; color: var(--cor-texto-suave); margin-top: 2px; }
+.domingo-opcao:hover .domingo-opcao-texto { border-color: var(--cor-texto-suave); }
+.domingo-opcao input:focus-visible + .domingo-opcao-texto { outline: 3px solid var(--cor-dourado); outline-offset: 2px; }
+.domingo-opcao input:checked + .domingo-opcao-texto { background: var(--cor-dourado); border-color: #141414; color: #141414; }
+.domingo-opcao input:checked + .domingo-opcao-texto small { color: #141414; }
+.domingo-opcao.lotado { cursor: not-allowed; }
+.domingo-opcao.lotado .domingo-opcao-texto { border-style: dashed; opacity: 0.6; text-decoration: line-through; }
+.domingo-aviso { font-size: 0.85rem; color: var(--cor-texto-suave); margin: 8px 0 0; line-height: 1.45; }
+.domingo-aviso strong { color: var(--cor-texto); }
+
+.retirada-destaque { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: 520px; margin: 16px 0; padding: 18px; border-radius: 16px; background: #141414; color: #fff; }
+.retirada-rotulo { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cor-dourado); }
+.retirada-quando { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-size: 1.7rem; line-height: 1.1; }
+.retirada-onde { font-size: 0.9rem; color: #E7E7E5; }
+.retirada-destaque .btn { margin-top: 6px; background: var(--cor-dourado); color: #141414; }
+.retirada-mudar summary { cursor: pointer; font-weight: 700; }
+.retirada-mudar summary small { font-weight: 500; color: var(--cor-texto-suave); }
+.retirada-mudar-form { display: grid; gap: 10px; margin-top: 12px; }
+
+.dica-produto { font-size: 0.85rem; color: var(--cor-texto-suave); margin: 4px 0 10px; }
+.footer-contato a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

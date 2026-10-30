@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/loja.php';
+require_once __DIR__ . '/../includes/domingo.php';
 
 liberarReservasExpiradas($pdo);
 
@@ -216,7 +217,7 @@ if (!empty($listaRelacionados)) {
     <span class="produto-categoria"><?= htmlspecialchars($produto['categoria']) ?></span>
     <h1><?= htmlspecialchars($produto['nome']) ?></h1>
     <p><?= nl2br(htmlspecialchars($produto['descricao'] ?? '')) ?></p>
-    <?php $unidadeProduto = unidadeVendaProduto($produto); ?>
+    <?php $unidadeProduto = unidadeVendaProduto($produto); $cfgDomingo = domingoConfig($pdo); $ehCarneDomingo = $cfgDomingo && (int) $produto['id_categoria'] === (int) $cfgDomingo['id_categoria_carnes']; ?>
     <p class="produto-preco">R$ <?= number_format($produto['preco_base'], 2, ',', '.') ?><?php if ($unidadeProduto === 'kg'): ?> <small style="font-size:0.55em; font-weight:500;">/ kg</small><?php endif; ?></p>
     <div style="display:flex; gap:10px; align-items:center; margin:4px 0 14px; flex-wrap:wrap;">
         <a href="<?= htmlspecialchars($linkCompartilharWhatsapp) ?>" target="_blank" rel="noopener" class="btn-compartilhar-whatsapp" style="margin:0;">
@@ -268,12 +269,22 @@ if (!empty($listaRelacionados)) {
                 <?php endforeach; ?>
             </select>
         </label>
-        <button type="submit" class="btn-lg btn-bloco">Adicionar ao carrinho</button>
+        <?php if ($unidadeProduto === 'kg'): ?>
+        <p class="dica-produto">Vendido por quilo: cada 1 no carrinho = 1 kg.</p>
+        <?php endif; ?>
+        <?php if ($ehCarneDomingo): ?>
+        <p class="dica-produto">Você escolhe o domingo e o horário de retirada no checkout.</p>
+        <?php endif; ?>
+        <button type="submit" class="btn-lg btn-bloco" id="btn-adicionar">Adicionar ao carrinho</button>
     </form>
     <p id="mensagem-adicionar"></p>
     <script>
     document.getElementById('form-adicionar').addEventListener('submit', function (e) {
         e.preventDefault();
+        // Trava o botão enquanto adiciona: clique duplo não adiciona duas vezes.
+        const btnAdicionar = document.getElementById('btn-adicionar');
+        if (btnAdicionar.disabled) { return; }
+        btnAdicionar.disabled = true;
         const idProdutoVariacao = document.getElementById('id_produto_variacao').value;
         fetch('/loja/ajax/adicionar_item.php', {
             method: 'POST',
@@ -283,9 +294,11 @@ if (!empty($listaRelacionados)) {
             if (data.success) {
                 window.location.href = '/loja/carrinho.php';
             } else {
+                btnAdicionar.disabled = false;
                 document.getElementById('mensagem-adicionar').textContent = data.message;
             }
         }).catch(err => {
+            btnAdicionar.disabled = false;
             document.getElementById('mensagem-adicionar').textContent = 'Erro de conexão. Tente novamente.';
         });
     });

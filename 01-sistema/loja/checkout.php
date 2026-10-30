@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/loja.php';
 require_once __DIR__ . '/../includes/superfrete.php';
 require_once __DIR__ . '/../includes/bradesco_pix.php';
+require_once __DIR__ . '/../includes/domingo.php';
 exigirClienteLogado();
 
 liberarReservasExpiradas($pdo);
@@ -66,6 +67,22 @@ $itensSubtotal = (float) $stmtItensSubtotal->fetchColumn();
 
 $erro = $_GET['erro'] ?? '';
 $pixBradesco = provedorPix($pdo) === 'bradesco';
+
+// Carne do domingo: o cliente escolhe qual domingo e o horário de retirada.
+$temCarneDomingo = vendaTemCarneDomingo($pdo, $id_venda);
+$opcoesDomingo = $temCarneDomingo ? domingoOpcoes($pdo, $id_venda) : [];
+$retiradaAtual = ['data' => '', 'hora' => ''];
+if ($temCarneDomingo) {
+    $stmtRet = $pdo->prepare('SELECT retirada_data, retirada_hora FROM vendas WHERE id_venda = :id');
+    $stmtRet->execute([':id' => $id_venda]);
+    $r = $stmtRet->fetch() ?: [];
+    $retiradaAtual = ['data' => (string) ($r['retirada_data'] ?? ''), 'hora' => domingoRotuloHora($r['retirada_hora'] ?? '')];
+    $datasValidas = array_column($opcoesDomingo, 'data');
+    if (!in_array($retiradaAtual['data'], $datasValidas, true)) {
+        $retiradaAtual = ['data' => $datasValidas[0] ?? '', 'hora' => ''];
+    }
+}
+$semDomingoDisponivel = $temCarneDomingo && empty($opcoesDomingo);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -89,13 +106,62 @@ $pixBradesco = provedorPix($pdo) === 'bradesco';
     <form method="post" id="form-checkout" action="/loja/ajax/gerar_checkout.php">
     <div class="layout-colunas">
         <div>
+            <?php if ($temCarneDomingo): ?>
+            <div class="resumo-card domingo-bloco" id="domingo-bloco">
+                <div class="domingo-cabecalho">
+                    <span class="domingo-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+                    <div>
+                        <h2>Retirada da carne do domingo</h2>
+                        <p>Seu pedido tem carne assada. Escolha quando vai buscar.</p>
+                    </div>
+                </div>
+
+                <?php if ($semDomingoDisponivel): ?>
+                <p class="alert alert-erro">As encomendas de carne estão fechadas no momento. Tire a carne do carrinho para comprar o restante, ou fale com a loja pelo WhatsApp.</p>
+                <?php else: ?>
+                <fieldset class="domingo-grupo">
+                    <legend>Qual domingo?</legend>
+                    <div class="domingo-opcoes domingo-opcoes-datas">
+                        <?php foreach ($opcoesDomingo as $i => $d): ?>
+                        <label class="domingo-opcao">
+                            <input type="radio" name="retirada_data" value="<?= htmlspecialchars($d['data']) ?>" data-corte="<?= htmlspecialchars($d['rotulo_corte']) ?>" data-rotulo="<?= htmlspecialchars($d['rotulo']) ?>" <?= $d['data'] === $retiradaAtual['data'] ? 'checked' : '' ?> required>
+                            <span class="domingo-opcao-texto"><strong><?= htmlspecialchars(ucfirst($d['rotulo'])) ?></strong><small><?= $i === 0 ? 'Mais próximo' : 'Seguinte' ?></small></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="domingo-aviso">Encomendas para este domingo até <strong id="domingo-corte"><?= htmlspecialchars($opcoesDomingo[0]['rotulo_corte']) ?></strong>.</p>
+                </fieldset>
+
+                <fieldset class="domingo-grupo">
+                    <legend>Horário de retirada</legend>
+                    <?php foreach ($opcoesDomingo as $d): ?>
+                    <div class="domingo-opcoes domingo-opcoes-horas" data-domingo="<?= htmlspecialchars($d['data']) ?>">
+                        <?php $temVaga = false; ?>
+                        <?php foreach ($d['horarios'] as $h): ?>
+                        <?php $lotado = $h['vagas'] <= 0; $temVaga = $temVaga || !$lotado; ?>
+                        <label class="domingo-opcao<?= $lotado ? ' lotado' : '' ?>">
+                            <input type="radio" name="retirada_hora" value="<?= htmlspecialchars($h['hora']) ?>" <?= $lotado ? 'disabled' : '' ?> <?= !$lotado && $d['data'] === $retiradaAtual['data'] && $h['hora'] === $retiradaAtual['hora'] ? 'checked' : '' ?> required>
+                            <span class="domingo-opcao-texto"><strong><?= htmlspecialchars($h['hora']) ?></strong><small><?= $lotado ? 'Lotado' : ($h['vagas'] === 1 ? '1 vaga' : $h['vagas'] . ' vagas') ?></small></span>
+                        </label>
+                        <?php endforeach; ?>
+                        <?php if (!$temVaga): ?>
+                        <p class="alert alert-erro" style="grid-column:1/-1; margin:0;">Todos os horários deste domingo lotaram. Escolha o outro domingo.</p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </fieldset>
+                <p class="domingo-aviso">As bebidas e os outros itens do pedido saem junto com a carne, no mesmo horário.</p>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <div class="resumo-card">
                 <label>Forma de entrega
                     <select name="id_entrega" id="id_entrega">
                         <?php foreach ($formasEntrega as $f): ?>
                         <option value="<?= $f['id_entrega'] ?>" data-tipo="<?= htmlspecialchars($f['tipo']) ?>" data-superfrete="<?= (int) $f['superfrete'] ?>" data-custo="<?= number_format((float) $f['custo'], 2, '.', '') ?>">
                             <?= htmlspecialchars($f['nome']) ?>
-                            <?= $f['prazo_dias'] !== null ? '(Prazo de ' . (int) $f['prazo_dias'] . ' dias)' : '' ?>
+                            <?= $f['prazo_dias'] !== null && !($temCarneDomingo && $f['tipo'] === 'retirada') ? '(Prazo de ' . (int) $f['prazo_dias'] . ' dias)' : '' ?>
                             <?= $f['superfrete'] ? '— calculado pelo CEP' : '— R$ ' . number_format($f['custo'], 2, ',', '.') ?>
                         </option>
                         <?php endforeach; ?>
@@ -132,7 +198,7 @@ $pixBradesco = provedorPix($pdo) === 'bradesco';
                     <span>Total</span>
                     <span id="valor-total-checkout">R$ <?= number_format($itensSubtotal, 2, ',', '.') ?></span>
                 </div>
-                <button type="submit" formaction="/loja/ajax/gerar_checkout.php" class="btn-lg btn-bloco">
+                <button type="submit" formaction="/loja/ajax/gerar_checkout.php" class="btn-lg btn-bloco"<?= $semDomingoDisponivel ? ' disabled' : '' ?>>
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10V8a6 6 0 1 1 12 0v2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1Zm2 0h8V8a4 4 0 1 0-8 0v2Z"/></svg>
                     <?= $pixBradesco ? 'Pagar com Pix' : 'Pagar com Mercado Pago' ?>
                 </button>
@@ -195,7 +261,7 @@ function atualizarTotalCheckout() {
     if (btnCredito) {
         const textoCredito = document.getElementById('texto-credito-disponivel');
         const insuficiente = creditoDisponivelCheckout < total;
-        btnCredito.disabled = insuficiente;
+        btnCredito.disabled = insuficiente || <?= $semDomingoDisponivel ? 'true' : 'false' ?>;
         textoCredito.textContent = insuficiente
             ? ' (insuficiente: ' + formatarMoeda(creditoDisponivelCheckout) + ')'
             : ' (disponível: ' + formatarMoeda(creditoDisponivelCheckout) + ')';
@@ -203,6 +269,31 @@ function atualizarTotalCheckout() {
 }
 document.getElementById('id_entrega').addEventListener('change', atualizarTotalCheckout);
 atualizarTotalCheckout();
+
+// ---- Carne do domingo: mostra só os horários do domingo escolhido ----
+(function () {
+    const bloco = document.getElementById('domingo-bloco');
+    if (!bloco) { return; }
+    const datas = bloco.querySelectorAll('input[name="retirada_data"]');
+    const grupos = bloco.querySelectorAll('.domingo-opcoes-horas');
+    const corte = document.getElementById('domingo-corte');
+    function atualizarDomingo() {
+        const marcado = bloco.querySelector('input[name="retirada_data"]:checked');
+        const data = marcado ? marcado.value : null;
+        grupos.forEach(function (g) {
+            const ativo = g.dataset.domingo === data;
+            g.hidden = !ativo;
+            g.querySelectorAll('input').forEach(function (inp) {
+                const lotado = inp.closest('.domingo-opcao').classList.contains('lotado');
+                inp.disabled = !ativo || lotado;
+                if (!ativo) { inp.checked = false; }
+            });
+        });
+        if (marcado && corte) { corte.textContent = marcado.dataset.corte; }
+    }
+    datas.forEach(function (d) { d.addEventListener('change', atualizarDomingo); });
+    atualizarDomingo();
+})();
 
 // ---- SuperFrete: CEP -> ViaCEP preenche o endereço (editável) -> cotação ----
 const campoCep = document.getElementById('envio_cep');

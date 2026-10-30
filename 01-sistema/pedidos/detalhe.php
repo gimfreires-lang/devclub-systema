@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/pedidos.php';
 require_once __DIR__ . '/../includes/loja.php';
 require_once __DIR__ . '/../includes/superfrete.php';
 require_once __DIR__ . '/../includes/fiscal.php';
+require_once __DIR__ . '/../includes/domingo.php';
 exigirLogin();
 
 $id_venda = (int) ($_GET['id_venda'] ?? 0);
@@ -49,7 +50,7 @@ $nomeLoja = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')
 <body>
 <?php require __DIR__ . '/../includes/admin_header.php'; ?>
     <h1>Pedido #<?= $id_venda ?></h1>
-    <p><span class="status-pill"><?= htmlspecialchars(rotuloStatusPedido($pedido['status'], $pedido['status_entrega'], $pedido['entrega_tipo'])) ?></span></p>
+    <p><span class="status-pill"><?= htmlspecialchars(rotuloStatusPedido($pedido['status'], $pedido['status_entrega'], $pedido['entrega_tipo'], $pedido['forma_pagamento'])) ?></span></p>
 
     <div class="grade-2col">
     <div class="card">
@@ -61,6 +62,9 @@ $nomeLoja = $pdo->query('SELECT nome_loja FROM config_loja WHERE id_config = 1')
             <strong>Endereço:</strong> <?= htmlspecialchars($pedido['cliente_endereco'] ?? '—') ?><br>
         <?php endif; ?>
         <strong>Entrega:</strong> <?= htmlspecialchars($pedido['entrega_nome'] ?? '—') ?>
+        <?php if (!empty($pedido['retirada_data'])): ?>
+        <br><strong>Retirada da carne:</strong> <?= htmlspecialchars(domingoRotuloRetirada($pedido['retirada_data'], $pedido['retirada_hora'])) ?>
+        <?php endif; ?>
     </p>
     </div>
 
@@ -236,7 +240,8 @@ if (formStatus) {
             body: 'id_venda=' + idVenda + '&status_entrega=' + encodeURIComponent(status_entrega)
         }).then(r => r.json()).then(data => {
             document.getElementById('status-msg').textContent = data.message;
-            if (data.success) { window.location.reload(); }
+            // Deixa a mensagem do WhatsApp (enviado ou motivo da falha) visível antes de recarregar.
+            if (data.success) { setTimeout(function () { window.location.reload(); }, data.message.indexOf('WhatsApp') >= 0 ? 3000 : 0); }
         });
     });
 }

@@ -78,6 +78,16 @@ try {
     $preco_unit = (float) $produto['preco'];
     $subtotal = $preco_unit * $quantidade;
 
+    // Mesmo produto já no carrinho: soma na mesma linha em vez de criar outra
+    // (antes, dois cliques em "Adicionar" deixavam a Costela Minga duas vezes).
+    $stmtExiste = $pdo->prepare('SELECT id_item FROM itens_venda WHERE id_venda = :iv AND id_produto_variacao = :ipv ORDER BY id_item LIMIT 1 FOR UPDATE');
+    $stmtExiste->execute([':iv' => $id_venda, ':ipv' => $id_produto_variacao]);
+    $idItemExistente = $stmtExiste->fetchColumn();
+
+    if ($idItemExistente) {
+        $pdo->prepare('UPDATE itens_venda SET quantidade = quantidade + :qtd, subtotal = preco_unit * quantidade WHERE id_item = :id')
+            ->execute([':qtd' => $quantidade, ':id' => (int) $idItemExistente]);
+    } else {
     $pdo->prepare(
         'INSERT INTO itens_venda (id_venda, nome_produto, descricao_combinacao, id_produto_variacao, quantidade, preco_unit, subtotal)
          VALUES (:iv, :nome, :desc, :ipv, :qtd, :preco, :subtotal)'
@@ -90,6 +100,7 @@ try {
         ':preco' => $preco_unit,
         ':subtotal' => $subtotal,
     ]);
+    }
 
     recalcularTotalVenda($pdo, $id_venda);
 

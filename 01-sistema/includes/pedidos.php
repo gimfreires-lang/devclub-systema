@@ -85,7 +85,7 @@ function cancelarPedidoPago(PDO $pdo, int $id_venda, int $id_usuario_admin, stri
     }
 }
 
-function rotuloStatusPedido(string $status, ?string $status_entrega, ?string $tipoEntrega = null): string
+function rotuloStatusPedido(string $status, ?string $status_entrega, ?string $tipoEntrega = null, ?string $formaPagamento = null): string
 {
     if ($status === 'Cancelado') {
         return 'Cancelado';
@@ -99,7 +99,10 @@ function rotuloStatusPedido(string $status, ?string $status_entrega, ?string $ti
         'Pronto' => $tipoEntrega === 'retirada' ? 'Pronto para retirada na loja' : 'Pronto para envio',
         'Enviado' => 'Enviado — a caminho',
         'Entregue' => $tipoEntrega === 'retirada' ? 'Retirado' : 'Entregue',
-        default => 'Pagamento confirmado — na fila de preparo',
+        // Conta aberta (Linha de Crédito) não é pagamento: o cliente ficou devendo.
+        default => $formaPagamento === 'Linha de Crédito'
+            ? 'Pedido confirmado — na conta aberta'
+            : 'Pagamento confirmado — na fila de preparo',
     };
 }
 

@@ -21,4 +21,22 @@ if ($stmt->rowCount() === 0) {
     exit;
 }
 
-echo json_encode(['success' => true, 'message' => 'Status atualizado.']);
+// "Pronto": avisa o cliente pelo WhatsApp (uma vez só por pedido).
+$avisou = null;
+if ($status_entrega === 'Pronto') {
+    try {
+        require_once __DIR__ . '/../../includes/avisos_whatsapp.php';
+        avisarPedidoPronto($pdo, $id_venda);
+        $ultimo = $pdo->prepare("SELECT sucesso, detalhe FROM whatsapp_log WHERE id_venda = :id AND tipo = 'pedido_pronto' ORDER BY id DESC LIMIT 1");
+        $ultimo->execute([':id' => $id_venda]);
+        $avisou = $ultimo->fetch() ?: null;
+    } catch (Throwable $e) {
+        error_log('atualizar_status: aviso de pronto falhou: ' . $e->getMessage());
+    }
+}
+
+$mensagem = 'Status atualizado.';
+if ($avisou) {
+    $mensagem .= (int) $avisou['sucesso'] ? ' Cliente avisado no WhatsApp.' : ' WhatsApp não enviado: ' . $avisou['detalhe'];
+}
+echo json_encode(['success' => true, 'message' => $mensagem]);

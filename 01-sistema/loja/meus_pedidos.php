@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../conecta_bd.php';
 require_once __DIR__ . '/../includes/auth_cliente.php';
 require_once __DIR__ . '/../includes/pedidos.php';
+require_once __DIR__ . '/../includes/domingo.php';
 exigirClienteLogado();
 
 $id_cliente = (int) $_SESSION['id_cliente'];
@@ -49,7 +50,7 @@ $pagina = min($pagina, $totalPaginas);
 $offset = ($pagina - 1) * PEDIDOS_POR_PAGINA;
 
 $stmt = $pdo->prepare(
-    "SELECT v.id_venda, v.data_venda, v.valor_total, v.status, v.status_entrega, v.origem, v.token_recibo, fe.tipo AS entrega_tipo,
+    "SELECT v.id_venda, v.data_venda, v.valor_total, v.status, v.status_entrega, v.origem, v.token_recibo, v.forma_pagamento, v.retirada_data, v.retirada_hora, fe.tipo AS entrega_tipo,
             (SELECT pf.caminho_arquivo
              FROM itens_venda iv
              JOIN produto_variacoes pv ON pv.id_produto_variacao = iv.id_produto_variacao
@@ -124,7 +125,7 @@ function montarLinkFiltro(string $status, int $pagina = 1): string
                             $classePill = 'concluido';
                             $linkPedido = '/caixa/recibo.php?id_venda=' . (int) $p['id_venda'] . '&t=' . urlencode((string) $p['token_recibo']);
                         } else {
-                            $rotulo = rotuloStatusPedido($p['status'], $p['status_entrega'], $p['entrega_tipo']);
+                            $rotulo = rotuloStatusPedido($p['status'], $p['status_entrega'], $p['entrega_tipo'], $p['forma_pagamento']);
                             $classePill = classePillStatusPedido($p['status'], $p['status_entrega']);
                             $linkPedido = '/loja/pedido_status.php?id_venda=' . (int) $p['id_venda'];
                         }
@@ -140,6 +141,9 @@ function montarLinkFiltro(string $status, int $pagina = 1): string
                         <div>
                             <div class="numero">Pedido #<?= (int) $p['id_venda'] ?></div>
                             <div class="data"><?= htmlspecialchars(date('d/m/Y', strtotime($p['data_venda']))) ?></div>
+                            <?php if (!empty($p['retirada_data']) && $p['status'] !== 'Cancelado'): ?>
+                            <div class="data"><strong>Retirada:</strong> <?= htmlspecialchars(domingoRotuloRetirada($p['retirada_data'], $p['retirada_hora'])) ?></div>
+                            <?php endif; ?>
                             <div class="total">R$ <?= number_format($p['valor_total'], 2, ',', '.') ?></div>
                             <span class="status-pill<?= $classePill ? ' ' . $classePill : '' ?>"><?= htmlspecialchars($rotulo) ?></span>
                             <span class="origem-pedido">

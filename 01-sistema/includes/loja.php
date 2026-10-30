@@ -41,6 +41,15 @@ function liberarReservasExpiradas(PDO $pdo): void
     foreach ($vendasExpiradas as $id_venda) {
         cancelarVendaReservadaLoja($pdo, (int) $id_venda);
     }
+
+    // De carona: resumo de produção e lembretes do domingo (no máximo a cada
+    // 5 minutos — ver domingoTarefasAutomaticas()). Nunca quebra a página.
+    try {
+        require_once __DIR__ . '/avisos_whatsapp.php';
+        domingoTarefasAutomaticas($pdo);
+    } catch (Throwable $e) {
+        error_log('liberarReservasExpiradas: tarefas do domingo: ' . $e->getMessage());
+    }
 }
 
 /**

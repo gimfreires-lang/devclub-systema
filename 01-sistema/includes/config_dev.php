@@ -28,8 +28,17 @@ function buscarConfigDev(PDO $pdo): array
 function creditoRodape(PDO $pdo): array
 {
     $config = buscarConfigDev($pdo);
+    $link = trim((string) ($config['footer_link'] ?? ''));
+    if ($link === '') {
+        $link = 'https://gimfreires.tech';
+    } elseif (!preg_match('#^https?://#i', $link)) {
+        // Endereço digitado sem o protocolo certo (ex.: "htpps://gimfreires.tech" ou
+        // "gimfreires.tech"): o navegador não abria o link. Remove o que vier antes
+        // do domínio e põe https://.
+        $link = 'https://' . preg_replace('#^([a-z]*:/*|/+)#i', '', $link);
+    }
     return [
         'nome' => !empty($config['footer_nome']) ? $config['footer_nome'] : 'gimfreires.tech',
-        'link' => !empty($config['footer_link']) ? $config['footer_link'] : 'https://gimfreires.tech',
+        'link' => $link,
     ];
 }

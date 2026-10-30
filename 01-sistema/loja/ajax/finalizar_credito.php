@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../conecta_bd.php';
 require_once __DIR__ . '/../../includes/auth_cliente.php';
 require_once __DIR__ . '/../../includes/loja.php';
 require_once __DIR__ . '/../../includes/caixa.php';
+require_once __DIR__ . '/../../includes/domingo.php';
 exigirClienteLogado();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -42,6 +43,14 @@ $itens = $pdo->prepare(
 $itens->execute([':id' => $id_venda]);
 if (empty($itens->fetchAll())) {
     header('Location: /loja/carrinho.php');
+    exit;
+}
+
+// Carne do domingo: confere e reserva o domingo/horário escolhido antes de
+// cobrar (prazo, vagas do horário e limite de cada carne no domingo).
+$erroRetirada = domingoValidarEGravarRetirada($pdo, $id_venda, (string) ($_POST['retirada_data'] ?? ''), (string) ($_POST['retirada_hora'] ?? ''));
+if ($erroRetirada !== null) {
+    header('Location: /loja/checkout.php?erro=' . urlencode($erroRetirada));
     exit;
 }
 
