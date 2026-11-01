@@ -6,10 +6,10 @@
 
 O Clube roda na **VPS da Hostinger com Easypanel**: siga as Partes 1 a 13 abaixo, com estes ajustes.
 
-- **Parte 4:** importe o **`SysVeronica.sql`** da raiz. Ele já vem com todas as atualizações de `sql/`, com nome, tema e cores do Clube da Cerveja e com os usuários iniciais das Partes 10 e 11.
+- **Parte 4:** importe o **`02-banco-de-dados/SysVeronica.sql`**. Ele já vem com todas as atualizações de `sql/`, com nome, tema e cores do Clube da Cerveja e com os usuários iniciais das Partes 10 e 11.
 - **Parte 5:** o código já está no GitHub, em `gimfreires-lang/devclub-systema` (público, branch `main`). Pule esta parte.
-- **Parte 6:** em **Repositório**, use `gimfreires-lang/devclub-systema`.
-- **Parte 8:** o webhook do Easypanel faz as atualizações. O envio por FTP (`.github/workflows/deploy.yml`) é só para hospedagem comum e fica manual.
+- **Parte 6:** em **Repositório**, use `gimfreires-lang/devclub-systema` e, em **Caminho de build** (Build Path), coloque `/01-sistema`. O sistema fica nessa pasta do repositório; sem esse caminho o Nixpacks não encontra o PHP e a implantação falha.
+- **Parte 8:** o webhook do Easypanel faz as atualizações. Em hospedagem comum (sem Easypanel), a atualização é manual: envie de novo os arquivos da pasta `01-sistema`.
 - **Parte 9:** a logo padrão do Clube fica em `assets/marca/`, fora do volume de `assets/img`, então ela continua aparecendo mesmo com o volume vazio.
 - **Depois da Parte 13:** em **Configurações > Aparência**, preencha WhatsApp, endereço e horário (ex.: "Seg a sáb 9h às 22h · Domingo churrasco a partir das 11h"). Se quiser, importe `sql/seed_clube_da_cerveja.sql` no phpMyAdmin para ter as categorias e os produtos de exemplo. Pelo menos a categoria **Carnes do Domingo** é recomendada, porque o botão "Ver carnes" do banner de domingo aponta para ela.
 
